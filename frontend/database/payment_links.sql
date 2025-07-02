@@ -30,3 +30,6 @@ create trigger update_payment_links_updated_at
     before update on payment_links
     for each row
     execute function update_updated_at_column();
+
+
+ALTER TABLE payment_links ADD CONSTRAINT payment_links_invoice_id_key UNIQUE (invoice_id);
