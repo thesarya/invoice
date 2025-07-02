@@ -4,8 +4,8 @@
   "description": "Invoice management backend with PhonePe integration",
   "main": "server.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
