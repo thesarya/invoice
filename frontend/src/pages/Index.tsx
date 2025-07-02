@@ -1,15 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Download } from "lucide-react";
-import InvoiceStatsCards from '../components/InvoiceStatsCards';
-import InvoiceCharts from '../components/InvoiceCharts';
-import InvoiceTable from '../components/InvoiceTable';
+import InvoiceStatsCards from "../components/InvoiceStatsCards";
+import InvoiceCharts from "../components/InvoiceCharts";
+import InvoiceTable from "../components/InvoiceTable";
 
 interface Invoice {
   id: string;
@@ -30,36 +41,42 @@ interface Invoice {
 
 const Index = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [consolidatedInvoices, setConsolidatedInvoices] = useState<Invoice[]>([]);
+  const [consolidatedInvoices, setConsolidatedInvoices] = useState<Invoice[]>(
+    []
+  );
   const [loading, setLoading] = useState(false);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [centre, setCentre] = useState('gkp');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [centre, setCentre] = useState("gkp");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [showConsolidated, setShowConsolidated] = useState(false);
   const [monthlyRevenue, setMonthlyRevenue] = useState<any[]>([]);
-  const [activeUsers, setActiveUsers] = useState<{ activeChildren: number; activeMember: number } | null>(null);
+  const [activeUsers, setActiveUsers] = useState<{
+    activeChildren: number;
+    activeMember: number;
+  } | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   const centres = {
-    gkp: 'Gorakhpur',
-    lko: 'Lucknow'
+    gkp: "Gorakhpur",
+    lko: "Lucknow",
   };
 
   const tokens = {
-    gkp: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MmNkNDUzNTNlZjhjOGNkNDViMmNjNDUiLCJvcmdhbml6YXRpb24iOnsiX2lkIjoiNjQ3OTg2YTAwMzY5ZWIyYWY2NGJhNDA1IiwibmFtZSI6IkFhcnlhdmFydCBDZW50cmUgLUdvcmFraFB1ciJ9LCJpYXQiOjE3NTA4NTQyMDIsImV4cCI6MTc2NjQwNjIwMn0.Y_h4TPoVFmrBydu3bTRgDYg1Cwm7VgsJ0vxRGwhISQs',
-    lko: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MmNkNDUzNTNlZjhjOGNkNDViMmNjNDUiLCJvcmdhbml6YXRpb24iOnsiX2lkIjoiNjJjZDQ1ODczZWY4YzhjZDQ1YjJjYzUyIiwibmFtZSI6ImFhcnlhdmFydCBDZW50ZXIgRm9yIEF1dGlzbSBBbmQgU3BlY2lhbCBOZWVkcyBGb3VuZGF0aW9uIn0sImlhdCI6MTc1MTM3NTgyNywiZXhwIjoxNzY2OTI3ODI3fQ.GpKtSO6WxxSHnHyvWCZnxy3edA1Yo7jFFhVV9zMCanM'
+    gkp: import.meta.env.VITE_GKP_TOKEN as string,
+    lko: import.meta.env.VITE_LKO_TOKEN as string,
   };
 
   const fetchInvoices = async (fetchCentre = centre) => {
     setLoading(true);
-    const paddedMonth = String(month).padStart(2, '0');
+    const paddedMonth = String(month).padStart(2, "0");
     const start = `${year}-${paddedMonth}-01T00:00:00.000Z`;
-    const end = month < 12
-      ? `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00.000Z`
-      : `${year + 1}-01-01T00:00:00.000Z`;
+    const end =
+      month < 12
+        ? `${year}-${String(month + 1).padStart(2, "0")}-01T00:00:00.000Z`
+        : `${year + 1}-01-01T00:00:00.000Z`;
 
     const query = `
       query Invoices($startDate: DateTime, $endDate: DateTime) {
@@ -71,24 +88,24 @@ const Index = () => {
     `;
 
     try {
-      const response = await fetch('https://care.kidaura.in/api/graphql', {
-        method: 'POST',
+      const response = await fetch("https://care.kidaura.in/api/graphql", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           query,
-          variables: { startDate: start, endDate: end }
-        })
+          variables: { startDate: start, endDate: end },
+        }),
       });
 
       const data = await response.json();
       const fetchedInvoices = data?.data?.invoices || [];
-      
+
       const invoicesWithCentre = fetchedInvoices.map((inv: Invoice) => ({
         ...inv,
-        centre: fetchCentre
+        centre: fetchCentre,
       }));
 
       return invoicesWithCentre;
@@ -102,13 +119,13 @@ const Index = () => {
     setLoading(true);
     try {
       const [gkpInvoices, lkoInvoices] = await Promise.all([
-        fetchInvoices('gkp'),
-        fetchInvoices('lko')
+        fetchInvoices("gkp"),
+        fetchInvoices("lko"),
       ]);
 
       const allInvoices = [...gkpInvoices, ...lkoInvoices];
       setConsolidatedInvoices(allInvoices);
-      
+
       toast({
         title: "Consolidated Data Fetched",
         description: `Found ${allInvoices.length} invoices across both centres`,
@@ -127,42 +144,57 @@ const Index = () => {
   const fetchMonthlyRevenue = async () => {
     const monthlyData = [];
     for (let m = 1; m <= 12; m++) {
-      const paddedMonth = String(m).padStart(2, '0');
+      const paddedMonth = String(m).padStart(2, "0");
       const start = `${year}-${paddedMonth}-01T00:00:00.000Z`;
-      const end = m < 12
-        ? `${year}-${String(m + 1).padStart(2, '0')}-01T00:00:00.000Z`
-        : `${year + 1}-01-01T00:00:00.000Z`;
+      const end =
+        m < 12
+          ? `${year}-${String(m + 1).padStart(2, "0")}-01T00:00:00.000Z`
+          : `${year + 1}-01-01T00:00:00.000Z`;
 
       try {
         const [gkpData, lkoData] = await Promise.all([
-          fetchMonthData('gkp', start, end),
-          fetchMonthData('lko', start, end)
+          fetchMonthData("gkp", start, end),
+          fetchMonthData("lko", start, end),
         ]);
 
-        const monthName = new Date(year, m - 1).toLocaleString('default', { month: 'short' });
-        const gkpRevenue = gkpData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
-        const lkoRevenue = lkoData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
-        
+        const monthName = new Date(year, m - 1).toLocaleString("default", {
+          month: "short",
+        });
+        const gkpRevenue = gkpData.reduce(
+          (sum: number, inv: Invoice) => sum + (inv.total || 0),
+          0
+        );
+        const lkoRevenue = lkoData.reduce(
+          (sum: number, inv: Invoice) => sum + (inv.total || 0),
+          0
+        );
+
         monthlyData.push({
           month: monthName,
           gkp: gkpRevenue,
           lko: lkoRevenue,
-          revenue: gkpRevenue + lkoRevenue
+          revenue: gkpRevenue + lkoRevenue,
         });
       } catch (error) {
         console.error(`Error fetching data for month ${m}:`, error);
         monthlyData.push({
-          month: new Date(year, m - 1).toLocaleString('default', { month: 'short' }),
+          month: new Date(year, m - 1).toLocaleString("default", {
+            month: "short",
+          }),
           gkp: 0,
           lko: 0,
-          revenue: 0
+          revenue: 0,
         });
       }
     }
     setMonthlyRevenue(monthlyData);
   };
 
-  const fetchMonthData = async (fetchCentre: string, start: string, end: string) => {
+  const fetchMonthData = async (
+    fetchCentre: string,
+    start: string,
+    end: string
+  ) => {
     const query = `
       query Invoices($startDate: DateTime, $endDate: DateTime) {
         invoices(startDate: $startDate, endDate: $endDate) {
@@ -173,16 +205,16 @@ const Index = () => {
     `;
 
     try {
-      const response = await fetch('https://care.kidaura.in/api/graphql', {
-        method: 'POST',
+      const response = await fetch("https://care.kidaura.in/api/graphql", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           query,
-          variables: { startDate: start, endDate: end }
-        })
+          variables: { startDate: start, endDate: end },
+        }),
       });
 
       const data = await response.json();
@@ -197,10 +229,12 @@ const Index = () => {
     try {
       const fetchedInvoices = await fetchInvoices();
       setInvoices(fetchedInvoices);
-      
+
       toast({
         title: "Data Fetched Successfully",
-        description: `Found ${fetchedInvoices.length} invoices for ${centres[centre as keyof typeof centres]} in ${month}/${year}`,
+        description: `Found ${fetchedInvoices.length} invoices for ${
+          centres[centre as keyof typeof centres]
+        } in ${month}/${year}`,
       });
     } catch (error) {
       toast({
@@ -227,18 +261,18 @@ const Index = () => {
       }
     `;
     try {
-      const response = await fetch('https://care.kidaura.in/api/graphql', {
-        method: 'POST',
+      const response = await fetch("https://care.kidaura.in/api/graphql", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query }),
       });
       const data = await response.json();
       setActiveUsers({
         activeChildren: data?.data?.childrenCount?.activeChildren ?? 0,
-        activeMember: data?.data?.membersCount?.activeMember ?? 0
+        activeMember: data?.data?.membersCount?.activeMember ?? 0,
       });
     } catch (error) {
       setActiveUsers(null);
@@ -255,26 +289,26 @@ const Index = () => {
             sendInvoice(id: $id)
           }
         `;
-        await fetch('https://care.kidaura.in/api/graphql', {
-          method: 'POST',
+        await fetch("https://care.kidaura.in/api/graphql", {
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${tokens[centre as keyof typeof tokens]}`,
-            'Content-Type': 'application/json'
+            Authorization: `Bearer ${tokens[centre as keyof typeof tokens]}`,
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ query: mutation, variables: { id } })
+          body: JSON.stringify({ query: mutation, variables: { id } }),
         });
       }
       toast({
-        title: 'Invoices Sent',
+        title: "Invoices Sent",
         description: `Sent ${selectedInvoiceIds.length} invoices.`,
       });
       setSelectedInvoiceIds([]);
       await loadSingleCentreData();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to send invoices.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to send invoices.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -299,12 +333,18 @@ const Index = () => {
 
   const currentInvoices = showConsolidated ? consolidatedInvoices : invoices;
 
-  const filteredInvoices = currentInvoices.filter(invoice => {
-    const matchesSearch = invoice.child?.fullNameWithCaseId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredInvoices = currentInvoices.filter((invoice) => {
+    const matchesSearch =
+      invoice.child?.fullNameWithCaseId
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       invoice.invoiceNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.child?.fatherName?.toLowerCase().includes(searchTerm.toLowerCase());
+      invoice.child?.fatherName
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || 
+    const matchesStatus =
+      statusFilter === "all" ||
       invoice.invoiceStatus?.toLowerCase() === statusFilter.toLowerCase();
 
     return matchesSearch && matchesStatus;
@@ -312,42 +352,55 @@ const Index = () => {
 
   const exportData = () => {
     const dataStr = JSON.stringify(filteredInvoices, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = `invoices_${showConsolidated ? 'consolidated' : centre}_${month}_${year}.json`;
+    link.download = `invoices_${
+      showConsolidated ? "consolidated" : centre
+    }_${month}_${year}.json`;
     link.click();
   };
 
-  const totalRevenue = filteredInvoices.reduce((sum, invoice) => sum + (invoice.total || 0), 0);
+  const totalRevenue = filteredInvoices.reduce(
+    (sum, invoice) => sum + (invoice.total || 0),
+    0
+  );
   const totalInvoices = filteredInvoices.length;
-  const paidInvoices = filteredInvoices.filter(inv => inv.invoiceStatus?.toLowerCase() === 'paid').length;
-  const pendingInvoices = filteredInvoices.filter(inv => inv.invoiceStatus?.toLowerCase() === 'draft' || inv.invoiceStatus?.toLowerCase() === 'pending').length;
+  const paidInvoices = filteredInvoices.filter(
+    (inv) => inv.invoiceStatus?.toLowerCase() === "paid"
+  ).length;
+  const pendingInvoices = filteredInvoices.filter(
+    (inv) =>
+      inv.invoiceStatus?.toLowerCase() === "draft" ||
+      inv.invoiceStatus?.toLowerCase() === "pending"
+  ).length;
 
   const statusData = [
-    { name: 'Paid', value: paidInvoices, color: '#00C49F' },
-    { name: 'Pending/Draft', value: pendingInvoices, color: '#FF8042' },
+    { name: "Paid", value: paidInvoices, color: "#00C49F" },
+    { name: "Pending/Draft", value: pendingInvoices, color: "#FF8042" },
   ];
 
-  const revenueByDay = filteredInvoices.reduce((acc, invoice) => {
-    const date = new Date(invoice.invoiceDate).getDate();
-    const existing = acc.find(item => item.day === date);
-    if (existing) {
-      existing.revenue += invoice.total || 0;
-    } else {
-      acc.push({ day: date, revenue: invoice.total || 0 });
-    }
-    return acc;
-  }, [] as { day: number; revenue: number }[]).sort((a, b) => a.day - b.day);
+  const revenueByDay = filteredInvoices
+    .reduce((acc, invoice) => {
+      const date = new Date(invoice.invoiceDate).getDate();
+      const existing = acc.find((item) => item.day === date);
+      if (existing) {
+        existing.revenue += invoice.total || 0;
+      } else {
+        acc.push({ day: date, revenue: invoice.total || 0 });
+      }
+      return acc;
+    }, [] as { day: number; revenue: number }[])
+    .sort((a, b) => a.day - b.day);
 
   // Calculate quarterly revenue from monthly data
   const quarterlyRevenue = monthlyRevenue.reduce((acc, monthData) => {
     const monthIndex = new Date(`${monthData.month} 1, ${year}`).getMonth();
     const quarter = Math.floor(monthIndex / 3) + 1;
     const quarterName = `Q${quarter} ${year}`;
-    
-    const existing = acc.find(q => q.quarter === quarterName);
+
+    const existing = acc.find((q) => q.quarter === quarterName);
     if (existing) {
       existing.revenue += monthData.revenue || 0;
     } else {
@@ -358,16 +411,19 @@ const Index = () => {
 
   // Calculate yearly revenue
   const yearlyRevenue = [
-    { 
-      year: year, 
-      revenue: monthlyRevenue.reduce((sum, month) => sum + (month.revenue || 0), 0) 
-    }
+    {
+      year: year,
+      revenue: monthlyRevenue.reduce(
+        (sum, month) => sum + (month.revenue || 0),
+        0
+      ),
+    },
   ];
 
   // Prepare monthly revenue data for charts
-  const monthlyRevenueForChart = monthlyRevenue.map(month => ({
+  const monthlyRevenueForChart = monthlyRevenue.map((month) => ({
     month: month.month,
-    revenue: month.revenue || 0
+    revenue: month.revenue || 0,
   }));
 
   return (
@@ -383,13 +439,15 @@ const Index = () => {
               Monitor and analyze invoice data across different centres
             </p>
           </div>
-          
+
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="consolidated"
                 checked={showConsolidated}
-                onCheckedChange={(checked) => setShowConsolidated(checked === true)}
+                onCheckedChange={(checked) =>
+                  setShowConsolidated(checked === true)
+                }
               />
               <label htmlFor="consolidated" className="text-sm font-medium">
                 Show Consolidated Data
@@ -407,7 +465,7 @@ const Index = () => {
                 </SelectContent>
               </Select>
             )}
-            
+
             <Input
               type="number"
               placeholder="Year"
@@ -417,7 +475,7 @@ const Index = () => {
               min="2020"
               max="2030"
             />
-            
+
             <Input
               type="number"
               placeholder="Month"
@@ -427,9 +485,15 @@ const Index = () => {
               min="1"
               max="12"
             />
-            
-            <Button onClick={showConsolidated ? fetchConsolidatedData : loadSingleCentreData} disabled={loading} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              {loading ? 'Loading...' : 'Refresh Data'}
+
+            <Button
+              onClick={
+                showConsolidated ? fetchConsolidatedData : loadSingleCentreData
+              }
+              disabled={loading}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              {loading ? "Loading..." : "Refresh Data"}
             </Button>
 
             <Button onClick={exportData} variant="outline">
@@ -446,7 +510,8 @@ const Index = () => {
               <CardHeader>
                 <CardTitle>Active Users This Month</CardTitle>
                 <CardDescription>
-                  Active Children: {activeUsers.activeChildren} | Active Members: {activeUsers.activeMember}
+                  Active Children: {activeUsers.activeChildren} | Active
+                  Members: {activeUsers.activeMember}
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -472,7 +537,7 @@ const Index = () => {
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="charts">Analytics & Charts</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="invoices" className="mt-6">
             <InvoiceTable
               filteredInvoices={filteredInvoices}
@@ -488,7 +553,7 @@ const Index = () => {
               onBulkSend={handleBulkSend}
             />
           </TabsContent>
-          
+
           <TabsContent value="charts" className="mt-6">
             <InvoiceCharts
               revenueByDay={revenueByDay}

@@ -1,11 +1,16 @@
-
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "lucide-react";
+import { Link, ExternalLink } from "lucide-react";
 
 interface Invoice {
   id: string;
@@ -24,9 +29,10 @@ interface PaymentLinkDialogProps {
 const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(invoice.total || 0);
-  const [phone, setPhone] = useState(invoice.child?.phone || '');
-  const [name, setName] = useState(invoice.child?.fullNameWithCaseId || '');
+  const [phone, setPhone] = useState(invoice.child?.phone || "");
+  const [name, setName] = useState(invoice.child?.fullNameWithCaseId || "");
   const [generating, setGenerating] = useState(false);
+  const [paymentLink, setPaymentLink] = useState<string>("");
   const { toast } = useToast();
 
   const generatePaymentLink = async () => {
@@ -60,29 +66,57 @@ const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
     setGenerating(true);
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/payments/generate-payment-link`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount,
+            phone,
+            name: name.trim(),
+            invoiceNo: invoice.invoiceNo,
+          }),
+        }
+      );
 
-      // Mock payment link - replace with actual PhonePe API integration
-      const mockLink = `https://phonepay.com/pay?amount=${amount}&ref=${invoice.invoiceNo}&name=${encodeURIComponent(name)}&phone=${phone}`;
-      
-      // Copy to clipboard
-      navigator.clipboard.writeText(mockLink);
-      
-      toast({
-        title: "Payment Link Generated",
-        description: "Link copied to clipboard",
-      });
+      const data = await response.json();
 
-      setOpen(false);
+      if (data.success) {
+        setPaymentLink(data.data.paymentUrl);
+
+        // Copy to clipboard
+        await navigator.clipboard.writeText(data.data.paymentUrl);
+
+        toast({
+          title: "Payment Link Generated",
+          description: "Link copied to clipboard successfully",
+        });
+      } else {
+        throw new Error(data.message || "Failed to generate payment link");
+      }
     } catch (error) {
+      console.error("Payment link generation error:", error);
       toast({
         title: "Error",
-        description: "Failed to generate payment link",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to generate payment link",
         variant: "destructive",
       });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const openPaymentLink = () => {
+    if (paymentLink) {
+      window.open(paymentLink, "_blank");
     }
   };
 
@@ -113,7 +147,9 @@ const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
             <Input
               id="phone-number"
               value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              onChange={(e) =>
+                setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+              }
               placeholder="Enter 10-digit phone number"
               maxLength={10}
             />
@@ -132,12 +168,38 @@ const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
           <div className="text-sm text-gray-600">
             Invoice: {invoice.invoiceNo}
           </div>
-          <Button 
-            onClick={generatePaymentLink} 
+
+          {paymentLink && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-700 mb-2">
+                Payment link generated successfully!
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={openPaymentLink}
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Open Link
+                </Button>
+                <Button
+                  onClick={() => navigator.clipboard.writeText(paymentLink)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Copy Again
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <Button
+            onClick={generatePaymentLink}
             disabled={generating}
             className="w-full"
           >
-            {generating ? 'Generating...' : 'Generate & Copy Link'}
+            {generating ? "Generating..." : "Generate & Copy Link"}
           </Button>
         </div>
       </DialogContent>

@@ -3,6 +3,7 @@
 A modern dashboard for managing, analyzing, and sending invoices across Aaryavart centres.
 
 ## Features
+
 - View, search, and filter invoices by status, centre, month, and year
 - Bulk operations: send multiple invoices at once
 - View detailed invoice information in a dialog
@@ -13,10 +14,12 @@ A modern dashboard for managing, analyzing, and sending invoices across Aaryavar
 ## Getting Started
 
 ### Prerequisites
+
 - [Node.js](https://nodejs.org/) (v18 or later recommended)
 - [npm](https://www.npmjs.com/) (comes with Node.js)
 
 ### Installation
+
 1. **Clone the repository:**
    ```sh
    git clone <YOUR_GIT_URL>
@@ -33,6 +36,7 @@ A modern dashboard for managing, analyzing, and sending invoices across Aaryavar
    The app will be available at [http://localhost:8080](http://localhost:8080) by default.
 
 ### Usage
+
 - Use the dashboard to:
   - Select centre, year, and month to view invoices
   - Search and filter invoices
@@ -42,12 +46,14 @@ A modern dashboard for managing, analyzing, and sending invoices across Aaryavar
   - Analyze revenue with interactive charts
 
 ### Project Structure
+
 - `src/pages/Index.tsx`: Main dashboard page
 - `src/components/InvoiceTable.tsx`: Invoice table with selection and actions
 - `src/components/InvoiceCharts.tsx`: Revenue and analytics charts
 - `src/components/ui/`: UI components (cards, dialogs, buttons, etc.)
 
 ### Technologies Used
+
 - [React](https://react.dev/)
 - [Vite](https://vitejs.dev/)
 - [TypeScript](https://www.typescriptlang.org/)
@@ -56,10 +62,13 @@ A modern dashboard for managing, analyzing, and sending invoices across Aaryavar
 - [Recharts](https://recharts.org/) (for charts)
 
 ### Deployment
+
 You can deploy this app to any static hosting provider (Vercel, Netlify, etc.) after running:
+
 ```sh
 npm run build
 ```
+
 The output will be in the `dist/` directory.
 
 ---
