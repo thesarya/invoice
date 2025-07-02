@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Link, ExternalLink } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface Invoice {
   id: string;
@@ -54,6 +55,25 @@ const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
 
     setPhone(processPhoneNumber(invoice.child?.phone || ""));
   }, [invoice.child?.phone]);
+
+  useEffect(() => {
+    const fetchExistingPaymentLink = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("payment_links")
+          .select("payment_url")
+          .eq("invoice_id", invoice.id)
+          .single();
+
+        if (error) throw error;
+        if (data) setPaymentLink(data.payment_url);
+      } catch (error) {
+        console.error("Error fetching payment link:", error);
+      }
+    };
+
+    fetchExistingPaymentLink();
+  }, [invoice.id]);
 
   const generatePaymentLink = async () => {
     if (!phone || phone.length !== 10) {
@@ -107,10 +127,30 @@ const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
       const data = await response.json();
 
       if (data.success) {
-        setPaymentLink(data.data.paymentUrl);
+        const paymentUrl = data.data.paymentUrl;
+        setPaymentLink(paymentUrl);
+
+        // Update or insert payment link in Supabase
+        const { error: upsertError } = await supabase
+          .from("payment_links")
+          .upsert(
+            {
+              invoice_id: invoice.id,
+              customer_name: name.trim(),
+              phone,
+              amount,
+              payment_url: paymentUrl,
+            },
+            {
+              onConflict: "invoice_id",
+              ignoreDuplicates: false,
+            }
+          );
+
+        if (upsertError) throw upsertError;
 
         // Copy to clipboard
-        await navigator.clipboard.writeText(data.data.paymentUrl);
+        await navigator.clipboard.writeText(paymentUrl);
 
         toast({
           title: "Payment Link Generated",
@@ -225,9 +265,38 @@ const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
           <Button
             onClick={generatePaymentLink}
             disabled={generating}
-            className="w-full"
+            className="w-full relative"
           >
-            {generating ? "Generating..." : "Generate & Copy Link"}
+            {generating ? (
+              <>
+                <span className="opacity-0">Generate & Copy Link</span>
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span className="ml-2">Generating...</span>
+                </span>
+              </>
+            ) : (
+              "Generate & Copy Link"
+            )}
           </Button>
         </div>
       </DialogContent>
