@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -29,11 +29,31 @@ interface PaymentLinkDialogProps {
 const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(invoice.total || 0);
-  const [phone, setPhone] = useState(invoice.child?.phone || "");
+  const [phone, setPhone] = useState("");
   const [name, setName] = useState(invoice.child?.fullNameWithCaseId || "");
   const [generating, setGenerating] = useState(false);
   const [paymentLink, setPaymentLink] = useState<string>("");
   const { toast } = useToast();
+
+  // Process phone number when component mounts or invoice changes
+  useEffect(() => {
+    const processPhoneNumber = (phoneNumber: string) => {
+      if (!phoneNumber) return "";
+
+      // Remove all non-digit characters
+      const digitsOnly = phoneNumber.replace(/\D/g, "");
+
+      // If phone number is 12 digits and starts with 91, remove the 91 prefix
+      if (digitsOnly.length === 12 && digitsOnly.startsWith("91")) {
+        return digitsOnly.substring(2);
+      }
+
+      // If phone number is already 10 digits or less, return as is
+      return digitsOnly.slice(0, 10);
+    };
+
+    setPhone(processPhoneNumber(invoice.child?.phone || ""));
+  }, [invoice.child?.phone]);
 
   const generatePaymentLink = async () => {
     if (!phone || phone.length !== 10) {
@@ -114,6 +134,11 @@ const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
     }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setPhone(value);
+  };
+
   const openPaymentLink = () => {
     if (paymentLink) {
       window.open(paymentLink, "_blank");
@@ -147,12 +172,15 @@ const PaymentLinkDialog: React.FC<PaymentLinkDialogProps> = ({ invoice }) => {
             <Input
               id="phone-number"
               value={phone}
-              onChange={(e) =>
-                setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
-              }
+              onChange={handlePhoneChange}
               placeholder="Enter 10-digit phone number"
               maxLength={10}
             />
+            {phone && phone.length < 10 && (
+              <p className="text-xs text-amber-600 mt-1">
+                Phone number should be 10 digits
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="amount">Amount (₹)</Label>

@@ -44,14 +44,13 @@ const {
       }
     }
   
-    async initiateSdkTokenPayment(amount, redirectUrl) {
+    async initiateSdkTokenPayment(amount) {
       try {
         const merchantOrderId = randomUUID();
   
         const request = CreateSdkOrderRequest.StandardCheckoutBuilder()
           .merchantOrderId(merchantOrderId)
-          .amount(amount * 100) // Convert to paise
-          .redirectUrl(redirectUrl)
+          .amount(amount * 100)
           .build();
   
         const response = await client.createSdkOrder(request);

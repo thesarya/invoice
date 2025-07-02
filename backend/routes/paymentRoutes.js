@@ -39,7 +39,7 @@ router.post('/generate-payment-link', async (req, res) => {
     }
 
     // Create redirect URL for success/failure
-    const redirectUrl = `${process.env.FRONTEND_URL}/payment-status`;
+    const redirectUrl = null;
 
     const customerDetails = {
       name: name.trim(),
