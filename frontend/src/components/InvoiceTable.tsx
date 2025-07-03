@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Filter, Phone, Mail } from "lucide-react";
 import PaymentLinkDialog from './PaymentLinkDialog';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
 
 interface Invoice {
   id: string;
@@ -54,6 +55,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   const [openDialogId, setOpenDialogId] = React.useState<string | null>(null);
   const [dialogInvoice, setDialogInvoice] = React.useState<any>(null);
   const [dialogLoading, setDialogLoading] = React.useState(false);
+  const [paymentLinks, setPaymentLinks] = useState<{ [invoiceId: string]: string }>({});
 
   const getStatusBadge = (status: string) => {
     const color = status?.toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
@@ -111,6 +113,25 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
     setOpenDialogId(null);
     setDialogInvoice(null);
   };
+
+  useEffect(() => {
+    async function fetchLinks() {
+      if (filteredInvoices.length === 0) return;
+      const ids = filteredInvoices.map(inv => inv.id);
+      const { data, error } = await supabase
+        .from("payment_links")
+        .select("invoice_id, payment_url")
+        .in("invoice_id", ids);
+      if (!error && data) {
+        const map: { [invoiceId: string]: string } = {};
+        data.forEach((row: any) => {
+          map[row.invoice_id] = row.payment_url;
+        });
+        setPaymentLinks(map);
+      }
+    }
+    fetchLinks();
+  }, [filteredInvoices]);
 
   return (
     <Card className="border-0 shadow-lg">
@@ -172,6 +193,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Amount</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Date</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700">Payment Link</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
@@ -215,6 +237,13 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                   <td className="py-3 px-4">{getStatusBadge(invoice.invoiceStatus)}</td>
                   <td className="py-3 px-4 text-sm text-gray-600">
                     {new Date(invoice.invoiceDate).toLocaleDateString()}
+                  </td>
+                  <td className="py-3 px-4 text-blue-600 underline">
+                    {paymentLinks[invoice.id] ? (
+                      <a href={paymentLinks[invoice.id]} target="_blank" rel="noopener noreferrer">Link</a>
+                    ) : (
+                      <span className="text-gray-400">N/A</span>
+                    )}
                   </td>
                   <td className="py-3 px-4">
                     <PaymentLinkDialog invoice={invoice} />

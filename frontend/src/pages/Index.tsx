@@ -57,6 +57,7 @@ const Index = () => {
     activeMember: number;
   } | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
+  const [chartCentre, setChartCentre] = useState("gkp");
   const { toast } = useToast();
 
   const centres = {
@@ -161,11 +162,11 @@ const Index = () => {
           month: "short",
         });
         const gkpRevenue = gkpData.reduce(
-          (sum: number, inv: Invoice) => sum + (inv.total || 0),
+          (sum, inv) => sum + (inv.total || 0),
           0
         );
         const lkoRevenue = lkoData.reduce(
-          (sum: number, inv: Invoice) => sum + (inv.total || 0),
+          (sum, inv) => sum + (inv.total || 0),
           0
         );
 
@@ -420,11 +421,88 @@ const Index = () => {
     },
   ];
 
-  // Prepare monthly revenue data for charts
-  const monthlyRevenueForChart = monthlyRevenue.map((month) => ({
-    month: month.month,
-    revenue: month.revenue || 0,
+  // Prepare separate arrays for each centre
+  const monthlyRevenueLucknow = monthlyRevenue.map(m => ({
+    month: m.month,
+    revenue: m.lko
   }));
+  const monthlyRevenueGorakhpur = monthlyRevenue.map(m => ({
+    month: m.month,
+    revenue: m.gkp
+  }));
+  const monthlyRevenueConsolidated = monthlyRevenue.map(m => ({
+    month: m.month,
+    revenue: m.revenue
+  }));
+
+  // Use the selected centre's data for the chart
+  let monthlyRevenueForChart;
+  if (chartCentre === "lko") {
+    monthlyRevenueForChart = monthlyRevenueLucknow;
+  } else if (chartCentre === "gkp") {
+    monthlyRevenueForChart = monthlyRevenueGorakhpur;
+  } else {
+    monthlyRevenueForChart = monthlyRevenueConsolidated;
+  }
+
+  // Compute quarterly revenue for each centre and combined
+  function computeQuarterlyRevenue(monthlyArr: { month: string; revenue: number }[]) {
+    const quarters = [
+      { quarter: `Q1 ${year}`, revenue: 0 },
+      { quarter: `Q2 ${year}`, revenue: 0 },
+      { quarter: `Q3 ${year}`, revenue: 0 },
+      { quarter: `Q4 ${year}`, revenue: 0 },
+    ];
+    // Map month names to indices for correct quarter assignment
+    const monthToQuarterIdx = {
+      Jan: 0, Feb: 0, Mar: 0,
+      Apr: 1, May: 1, Jun: 1,
+      Jul: 2, Aug: 2, Sep: 2,
+      Oct: 3, Nov: 3, Dec: 3,
+    };
+    monthlyArr.forEach((m) => {
+      const qIdx = monthToQuarterIdx[m.month];
+      if (typeof qIdx === 'number') {
+        quarters[qIdx].revenue += m.revenue || 0;
+      }
+    });
+    return quarters;
+  }
+  const quarterlyRevenueLucknow = computeQuarterlyRevenue(monthlyRevenueLucknow);
+  const quarterlyRevenueGorakhpur = computeQuarterlyRevenue(monthlyRevenueGorakhpur);
+  const quarterlyRevenueConsolidated = computeQuarterlyRevenue(monthlyRevenueConsolidated);
+
+  let quarterlyRevenueForChart;
+  if (chartCentre === "lko") {
+    quarterlyRevenueForChart = quarterlyRevenueLucknow;
+  } else if (chartCentre === "gkp") {
+    quarterlyRevenueForChart = quarterlyRevenueGorakhpur;
+  } else {
+    quarterlyRevenueForChart = quarterlyRevenueConsolidated;
+  }
+
+  // Pass the handler to InvoiceCharts
+  const handleChartCentreChange = (centre: string) => setChartCentre(centre);
+
+  // Compute payment mode breakdown for the selected centre and year
+  const paymentModeBreakdown = (() => {
+    // Only use invoices for the selected centre and year
+    const invoicesForYear = currentInvoices.filter(
+      inv =>
+        new Date(inv.invoiceDate).getFullYear() === year &&
+        (!showConsolidated ? inv.centre === centre : true)
+    );
+    const cash = invoicesForYear
+      .filter(inv => inv.paymentMode?.toLowerCase() === "cash" && inv.invoiceStatus?.toLowerCase() === "paid")
+      .reduce((sum, inv) => sum + (inv.total || 0), 0);
+    const upi = invoicesForYear
+      .filter(inv => inv.paymentMode?.toLowerCase() === "upi" && inv.invoiceStatus?.toLowerCase() === "paid")
+      .reduce((sum, inv) => sum + (inv.total || 0), 0);
+    return [
+      { name: "Cash", value: cash, color: "#82ca9d" },
+      { name: "UPI", value: upi, color: "#8884d8" },
+    ];
+  })();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
@@ -557,10 +635,12 @@ const Index = () => {
           <TabsContent value="charts" className="mt-6">
             <InvoiceCharts
               revenueByDay={revenueByDay}
-              statusData={statusData}
+              statusData={paymentModeBreakdown}
               monthlyRevenue={monthlyRevenueForChart}
-              quarterlyRevenue={quarterlyRevenue}
+              quarterlyRevenue={quarterlyRevenueForChart}
               yearlyRevenue={yearlyRevenue}
+              selectedCentre={chartCentre}
+              onCentreChange={handleChartCentreChange}
             />
           </TabsContent>
         </Tabs>
