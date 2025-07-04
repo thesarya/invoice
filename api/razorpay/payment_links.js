@@ -1,3 +1,4 @@
+// Vercel serverless function for Razorpay payment links API
 export default async function handler(req, res) {
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
