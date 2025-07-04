@@ -8,12 +8,10 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Get the path from the URL
-  const url = new URL(req.url, `https://${req.headers.host}`);
-  const path = url.pathname.replace('/api/razorpay', '');
+  console.log(`Payment Links API called: ${req.method}`);
 
   // Construct the Razorpay API URL
-  const razorpayUrl = `https://api.razorpay.com/v1${path}`;
+  const razorpayUrl = 'https://api.razorpay.com/v1/payment_links';
 
   try {
     // Prepare headers
@@ -36,9 +34,10 @@ export default async function handler(req, res) {
     // Add body for POST/PUT/PATCH requests
     if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.body) {
       requestOptions.body = JSON.stringify(req.body);
+      console.log('Request body:', req.body);
     }
 
-    console.log(`Proxying ${req.method} ${path} to ${razorpayUrl}`);
+    console.log(`Proxying to: ${razorpayUrl}`);
 
     // Make request to Razorpay API
     const response = await fetch(razorpayUrl, requestOptions);
@@ -51,7 +50,7 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    console.log(`Response status: ${response.status}`);
+    console.log(`Razorpay response status: ${response.status}`);
 
     // Return the response
     res.status(response.status).json(data);
@@ -66,7 +65,8 @@ export default async function handler(req, res) {
     
     res.status(500).json({ 
       error: 'Proxy error', 
-      message: error.message 
+      message: error.message,
+      details: error.stack
     });
   }
 } 
