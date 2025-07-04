@@ -256,7 +256,7 @@ class RazorpayService {
         invoice_no: invoice.invoiceNo,
         policy_name: 'Kidaura Care',
       },
-      callback_url: `${window.location.origin}/payment-callback`,
+      callback_url: `${window.location.origin}/api/thankyou`,
       callback_method: 'get',
     };
 
