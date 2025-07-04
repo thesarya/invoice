@@ -64,9 +64,11 @@ const Index = () => {
   };
 
   const tokens = {
-    gkp: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MmNkNDUzNTNlZjhjOGNkNDViMmNjNDUiLCJvcmdhbml6YXRpb24iOnsiX2lkIjoiNjQ3OTg2YTAwMzY5ZWIyYWY2NGJhNDA1IiwibmFtZSI6IkFhcnlhdmFydCBDZW50cmUgLUdvcmFraFB1ciJ9LCJpYXQiOjE3NTA4NTQyMDIsImV4cCI6MTc2NjQwNjIwMn0.Y_h4TPoVFmrBydu3bTRgDYg1Cwm7VgsJ0vxRGwhISQs',
-    lko: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MmNkNDUzNTNlZjhjOGNkNDViMmNjNDUiLCJvcmdhbml6YXRpb24iOnsiX2lkIjoiNjJjZDQ1ODczZWY4YzhjZDQ1YjJjYzUyIiwibmFtZSI6ImFhcnlhdmFydCBDZW50ZXIgRm9yIEF1dGlzbSBBbmQgU3BlY2lhbCBOZWVkcyBGb3VuZGF0aW9uIn0sImlhdCI6MTc1MTM3NTgyNywiZXhwIjoxNzY2OTI3ODI3fQ.GpKtSO6WxxSHnHyvWCZnxy3edA1Yo7jFFhVV9zMCanM'
+    gkp: import.meta.env.VITE_GKP_TOKEN,
+    lko: import.meta.env.VITE_LKO_TOKEN
   };
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://care.kidaura.in/api/graphql';
 
   const fetchInvoices = async (fetchCentre = centre) => {
     setLoading(true);
@@ -86,7 +88,7 @@ const Index = () => {
     `;
 
     try {
-      const response = await fetch('https://care.kidaura.in/api/graphql', {
+      const response = await fetch(`${API_BASE_URL}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
@@ -237,7 +239,7 @@ const Index = () => {
     `;
 
     try {
-      const response = await fetch('https://care.kidaura.in/api/graphql', {
+      const response = await fetch(`${API_BASE_URL}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
@@ -291,7 +293,7 @@ const Index = () => {
       }
     `;
     try {
-      const response = await fetch('https://care.kidaura.in/api/graphql', {
+      const response = await fetch(`${API_BASE_URL}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
@@ -319,7 +321,7 @@ const Index = () => {
             sendInvoice(id: $id)
           }
         `;
-        await fetch('https://care.kidaura.in/api/graphql', {
+        await fetch(`${API_BASE_URL}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${tokens[centre as keyof typeof tokens]}`,
@@ -438,12 +440,6 @@ const Index = () => {
     lko: yearData.lko || 0,
     revenue: yearData.total || 0
   }));
-
-  // Calculate invoice counts for both centres
-  const invoiceCounts = {
-    gkp: filteredInvoices.filter(inv => inv.centre === 'gkp').length,
-    lko: filteredInvoices.filter(inv => inv.centre === 'lko').length
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
@@ -571,7 +567,6 @@ const Index = () => {
               monthlyRevenue={monthlyRevenueForChart}
               quarterlyRevenue={quarterlyRevenue}
               yearlyRevenue={yearlyRevenueForChart}
-              invoiceCounts={invoiceCounts}
             />
           </TabsContent>
         </Tabs>
