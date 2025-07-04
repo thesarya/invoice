@@ -28,6 +28,20 @@ interface Invoice {
   centre?: string;
 }
 
+interface MonthlyRevenueData {
+  month: string;
+  gkp: number;
+  lko: number;
+  revenue: number;
+}
+
+interface YearlyRevenueData {
+  year: number;
+  gkp: number;
+  lko: number;
+  total: number;
+}
+
 const Index = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [consolidatedInvoices, setConsolidatedInvoices] = useState<Invoice[]>([]);
@@ -38,7 +52,8 @@ const Index = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showConsolidated, setShowConsolidated] = useState(false);
-  const [monthlyRevenue, setMonthlyRevenue] = useState<any[]>([]);
+  const [monthlyRevenue, setMonthlyRevenue] = useState<MonthlyRevenueData[]>([]);
+  const [yearlyRevenue, setYearlyRevenue] = useState<YearlyRevenueData[]>([]);
   const [activeUsers, setActiveUsers] = useState<{ activeChildren: number; activeMember: number } | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
   const { toast } = useToast();
@@ -143,6 +158,13 @@ const Index = () => {
         const gkpRevenue = gkpData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
         const lkoRevenue = lkoData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
         
+        // Debug logging
+        console.log(`Month ${m} (${monthName}):`, {
+          gkp: { count: gkpData.length, revenue: gkpRevenue },
+          lko: { count: lkoData.length, revenue: lkoRevenue },
+          dateRange: { start, end }
+        });
+        
         monthlyData.push({
           month: monthName,
           gkp: gkpRevenue,
@@ -160,6 +182,48 @@ const Index = () => {
       }
     }
     setMonthlyRevenue(monthlyData);
+  };
+
+  const fetchYearlyRevenue = async () => {
+    const currentYear = new Date().getFullYear();
+    const lastYear = currentYear - 1;
+    const yearlyData = [];
+
+    for (const yearToFetch of [lastYear, currentYear]) {
+      try {
+        const start = `${yearToFetch}-01-01T00:00:00.000Z`;
+        const end = `${yearToFetch + 1}-01-01T00:00:00.000Z`;
+
+        const [gkpData, lkoData] = await Promise.all([
+          fetchMonthData('gkp', start, end),
+          fetchMonthData('lko', start, end)
+        ]);
+
+        const gkpRevenue = gkpData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
+        const lkoRevenue = lkoData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
+
+        console.log(`Year ${yearToFetch}:`, {
+          gkp: { count: gkpData.length, revenue: gkpRevenue },
+          lko: { count: lkoData.length, revenue: lkoRevenue }
+        });
+
+        yearlyData.push({
+          year: yearToFetch,
+          gkp: gkpRevenue,
+          lko: lkoRevenue,
+          total: gkpRevenue + lkoRevenue
+        });
+      } catch (error) {
+        console.error(`Error fetching data for year ${yearToFetch}:`, error);
+        yearlyData.push({
+          year: yearToFetch,
+          gkp: 0,
+          lko: 0,
+          total: 0
+        });
+      }
+    }
+    setYearlyRevenue(yearlyData);
   };
 
   const fetchMonthData = async (fetchCentre: string, start: string, end: string) => {
@@ -294,6 +358,10 @@ const Index = () => {
   }, [year]);
 
   useEffect(() => {
+    fetchYearlyRevenue();
+  }, [year]);
+
+  useEffect(() => {
     fetchActiveUsers();
   }, [year, month, centre]);
 
@@ -341,34 +409,41 @@ const Index = () => {
     return acc;
   }, [] as { day: number; revenue: number }[]).sort((a, b) => a.day - b.day);
 
-  // Calculate quarterly revenue from monthly data
+  // Prepare monthly revenue data for charts (separate for each centre)
+  const monthlyRevenueForChart = monthlyRevenue.map(month => ({
+    month: month.month,
+    gkp: month.gkp || 0,
+    lko: month.lko || 0
+  }));
+
+  // Calculate quarterly revenue for each centre
   const quarterlyRevenue = monthlyRevenue.reduce((acc, monthData) => {
     const monthIndex = new Date(`${monthData.month} 1, ${year}`).getMonth();
     const quarter = Math.floor(monthIndex / 3) + 1;
     const quarterName = `Q${quarter} ${year}`;
-    
-    const existing = acc.find(q => q.quarter === quarterName);
-    if (existing) {
-      existing.revenue += monthData.revenue || 0;
-    } else {
-      acc.push({ quarter: quarterName, revenue: monthData.revenue || 0 });
+    let existing = acc.find(q => q.quarter === quarterName);
+    if (!existing) {
+      existing = { quarter: quarterName, gkp: 0, lko: 0 };
+      acc.push(existing);
     }
+    existing.gkp += monthData.gkp || 0;
+    existing.lko += monthData.lko || 0;
     return acc;
-  }, [] as { quarter: string; revenue: number }[]);
+  }, [] as { quarter: string; gkp: number; lko: number }[]);
 
-  // Calculate yearly revenue
-  const yearlyRevenue = [
-    { 
-      year: year, 
-      revenue: monthlyRevenue.reduce((sum, month) => sum + (month.revenue || 0), 0) 
-    }
-  ];
-
-  // Prepare monthly revenue data for charts
-  const monthlyRevenueForChart = monthlyRevenue.map(month => ({
-    month: month.month,
-    revenue: month.revenue || 0
+  // Prepare yearly revenue data for charts
+  const yearlyRevenueForChart = yearlyRevenue.map(yearData => ({
+    year: yearData.year,
+    gkp: yearData.gkp || 0,
+    lko: yearData.lko || 0,
+    revenue: yearData.total || 0
   }));
+
+  // Calculate invoice counts for both centres
+  const invoiceCounts = {
+    gkp: filteredInvoices.filter(inv => inv.centre === 'gkp').length,
+    lko: filteredInvoices.filter(inv => inv.centre === 'lko').length
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
@@ -495,7 +570,8 @@ const Index = () => {
               statusData={statusData}
               monthlyRevenue={monthlyRevenueForChart}
               quarterlyRevenue={quarterlyRevenue}
-              yearlyRevenue={yearlyRevenue}
+              yearlyRevenue={yearlyRevenueForChart}
+              invoiceCounts={invoiceCounts}
             />
           </TabsContent>
         </Tabs>

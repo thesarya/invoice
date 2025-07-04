@@ -1,9 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Filter, Phone, Mail } from "lucide-react";
+import { FileText, Filter, Phone, Mail, CheckCircle, FileText as DraftIcon, Clock, Layers } from "lucide-react";
 import PaymentLinkDialog from './PaymentLinkDialog';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -52,7 +51,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   onBulkSend
 }) => {
   const [openDialogId, setOpenDialogId] = React.useState<string | null>(null);
-  const [dialogInvoice, setDialogInvoice] = React.useState<any>(null);
+  const [dialogInvoice, setDialogInvoice] = React.useState<Invoice | null>(null);
   const [dialogLoading, setDialogLoading] = React.useState(false);
 
   const getStatusBadge = (status: string) => {
@@ -130,24 +129,88 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               className="md:w-64"
             />
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              {[
+                { 
+                  label: 'All', 
+                  value: 'all', 
+                  icon: Layers,
+                  activeBg: 'bg-gradient-to-r from-indigo-500 to-purple-600',
+                  inactiveBg: 'bg-gradient-to-r from-gray-100 to-gray-200',
+                  activeText: 'text-white',
+                  inactiveText: 'text-gray-700',
+                  border: 'border-gray-300'
+                },
+                { 
+                  label: 'Paid', 
+                  value: 'paid', 
+                  icon: CheckCircle,
+                  activeBg: 'bg-gradient-to-r from-green-500 to-emerald-600',
+                  inactiveBg: 'bg-gradient-to-r from-green-50 to-emerald-50',
+                  activeText: 'text-white',
+                  inactiveText: 'text-green-700',
+                  border: 'border-green-200'
+                },
+                { 
+                  label: 'Draft', 
+                  value: 'draft', 
+                  icon: DraftIcon,
+                  activeBg: 'bg-gradient-to-r from-yellow-500 to-orange-600',
+                  inactiveBg: 'bg-gradient-to-r from-yellow-50 to-orange-50',
+                  activeText: 'text-white',
+                  inactiveText: 'text-yellow-700',
+                  border: 'border-yellow-200'
+                },
+                { 
+                  label: 'Open', 
+                  value: 'open', 
+                  icon: Clock,
+                  activeBg: 'bg-gradient-to-r from-blue-500 to-cyan-600',
+                  inactiveBg: 'bg-gradient-to-r from-blue-50 to-cyan-50',
+                  activeText: 'text-white',
+                  inactiveText: 'text-blue-700',
+                  border: 'border-blue-200'
+                },
+              ].map((status) => {
+                const IconComponent = status.icon;
+                const isActive = statusFilter === status.value;
+                return (
+                  <button
+                    key={status.value}
+                    onClick={() => setStatusFilter(status.value)}
+                    className={`
+                      relative px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 
+                      flex items-center gap-2 shadow-sm hover:shadow-md transform hover:scale-105
+                      ${isActive 
+                        ? `${status.activeBg} ${status.activeText} border-transparent shadow-lg` 
+                        : `${status.inactiveBg} ${status.inactiveText} ${status.border} hover:shadow-md`
+                      }
+                    `}
+                    type="button"
+                  >
+                    <IconComponent className={`h-4 w-4 ${isActive ? 'text-white' : ''}`} />
+                    {status.label}
+                    {isActive && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full border-2 border-current"></div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
             <button
-              className="ml-2 px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50"
+              className={`
+                relative px-4 py-2 rounded-lg font-medium transition-all duration-200 
+                flex items-center gap-2 shadow-sm hover:shadow-md transform hover:scale-105
+                ${selectedInvoiceIds.length === 0
+                  ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700'
+                }
+              `}
               onClick={onBulkSend}
               disabled={selectedInvoiceIds.length === 0}
             >
-              Send Selected
+              <FileText className="h-4 w-4" />
+              Send Selected ({selectedInvoiceIds.length})
             </button>
           </div>
         </div>
