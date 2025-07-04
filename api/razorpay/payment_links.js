@@ -8,7 +8,21 @@ export default async function handler(req, res) {
     return;
   }
 
-  console.log(`Payment Links API called: ${req.method}`);
+  console.log(`Payment Links API called: ${req.method} at ${new Date().toISOString()}`);
+
+  // Check if method is supported
+  const supportedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+  if (!supportedMethods.includes(req.method)) {
+    console.log(`Method ${req.method} not allowed`);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return res.status(405).json({ 
+      error: 'Method Not Allowed', 
+      message: `Method ${req.method} is not supported`,
+      allowedMethods: supportedMethods
+    });
+  }
 
   // Construct the Razorpay API URL
   const razorpayUrl = 'https://api.razorpay.com/v1/payment_links';
@@ -23,6 +37,9 @@ export default async function handler(req, res) {
     // Add Authorization header if present
     if (req.headers.authorization) {
       headers['Authorization'] = req.headers.authorization;
+      console.log('Authorization header present');
+    } else {
+      console.log('No Authorization header found');
     }
 
     // Prepare request options
@@ -34,23 +51,34 @@ export default async function handler(req, res) {
     // Add body for POST/PUT/PATCH requests
     if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.body) {
       requestOptions.body = JSON.stringify(req.body);
-      console.log('Request body:', req.body);
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
     }
 
-    console.log(`Proxying to: ${razorpayUrl}`);
+    console.log(`Proxying ${req.method} request to: ${razorpayUrl}`);
 
     // Make request to Razorpay API
     const response = await fetch(razorpayUrl, requestOptions);
     
+    console.log(`Razorpay response status: ${response.status}`);
+    console.log(`Razorpay response headers:`, Object.fromEntries(response.headers.entries()));
+
     // Get response data
-    const data = await response.json();
+    let data;
+    const responseText = await response.text();
+    
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse response as JSON:', responseText);
+      throw new Error(`Invalid JSON response from Razorpay: ${responseText}`);
+    }
 
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    console.log(`Razorpay response status: ${response.status}`);
+    console.log(`Returning response with status: ${response.status}`);
 
     // Return the response
     res.status(response.status).json(data);
