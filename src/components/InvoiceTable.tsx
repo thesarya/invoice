@@ -2,9 +2,12 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Filter, Phone, Mail, CheckCircle, FileText as DraftIcon, Clock, Layers } from "lucide-react";
+import { FileText, Filter, Phone, Mail, CheckCircle, FileText as DraftIcon, Clock, Layers, Copy, MessageCircle } from "lucide-react";
 import PaymentLinkDialog from './PaymentLinkDialog';
+import BulkPaymentLinkDialog from './BulkPaymentLinkDialog';
+import WhatsAppDialog from './WhatsAppDialog';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Invoice {
   id: string;
@@ -53,6 +56,8 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   const [openDialogId, setOpenDialogId] = React.useState<string | null>(null);
   const [dialogInvoice, setDialogInvoice] = React.useState<Invoice | null>(null);
   const [dialogLoading, setDialogLoading] = React.useState(false);
+  const [paymentLinks, setPaymentLinks] = React.useState<{[key: string]: string}>({});
+  const { toast } = useToast();
 
   const getStatusBadge = (status: string) => {
     const color = status?.toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
@@ -197,6 +202,15 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 );
               })}
             </div>
+            <BulkPaymentLinkDialog 
+              selectedInvoices={filteredInvoices.filter(inv => selectedInvoiceIds.includes(inv.id))}
+              onPaymentLinksGenerated={(links) => {
+                setPaymentLinks(prev => ({
+                  ...prev,
+                  ...links
+                }));
+              }}
+            />
             <button
               className={`
                 relative px-4 py-2 rounded-lg font-medium transition-all duration-200 
@@ -233,6 +247,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 {showConsolidated && <th className="text-left py-3 px-4 font-semibold text-gray-700">Centre</th>}
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Contact</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Amount</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700">Payment Link</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Date</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
@@ -263,7 +278,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                       {invoice.child?.phone && (
                         <div className="flex items-center gap-1 text-sm">
                           <Phone className="h-3 w-3" />
-                          {invoice.child.phone}
+                          {invoice.child.phone.startsWith('91') ? invoice.child.phone.substring(2) : invoice.child.phone}
                         </div>
                       )}
                       {invoice.child?.email && (
@@ -275,12 +290,68 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                     </div>
                   </td>
                   <td className="py-3 px-4 font-semibold">₹{invoice.total?.toLocaleString()}</td>
+                  <td className="py-3 px-4">
+                    {paymentLinks[invoice.id] ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                          Generated
+                        </span>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(paymentLinks[invoice.id]);
+                              toast({
+                                title: "Payment Link Copied",
+                                description: "Payment link has been copied to clipboard",
+                              });
+                            } catch (error) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to copy payment link",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800 p-1"
+                          title="Copy payment link"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                        {invoice.child?.phone && (
+                          <WhatsAppDialog
+                            defaultPhone={invoice.child.phone}
+                            studentName={invoice.child?.fullNameWithCaseId || ''}
+                            parentName={invoice.child?.fatherName || ''}
+                            paymentLink={paymentLinks[invoice.id]}
+                            trigger={
+                              <button
+                                className="text-xs text-green-600 hover:text-green-800 p-1"
+                                title="Send WhatsApp message"
+                              >
+                                <MessageCircle className="h-3 w-3" />
+                              </button>
+                            }
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-500">Not generated</span>
+                    )}
+                  </td>
                   <td className="py-3 px-4">{getStatusBadge(invoice.invoiceStatus)}</td>
                   <td className="py-3 px-4 text-sm text-gray-600">
                     {new Date(invoice.invoiceDate).toLocaleDateString()}
                   </td>
                   <td className="py-3 px-4">
-                    <PaymentLinkDialog invoice={invoice} />
+                    <PaymentLinkDialog 
+                      invoice={invoice} 
+                      onPaymentLinkGenerated={(invoiceId, paymentLink) => {
+                        setPaymentLinks(prev => ({
+                          ...prev,
+                          [invoiceId]: paymentLink
+                        }));
+                      }}
+                    />
                     <Dialog open={openDialogId === invoice.id} onOpenChange={(open) => open ? handleOpenDialog(invoice.id) : handleCloseDialog()}>
                       <DialogTrigger asChild>
                         <button className="ml-2 px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-xs">View</button>
