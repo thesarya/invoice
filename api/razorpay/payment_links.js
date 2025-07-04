@@ -1,10 +1,12 @@
 // Vercel serverless function for Razorpay payment links API
 export default async function handler(req, res) {
+  // Set CORS headers for all requests
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.status(200).end();
     return;
   }
@@ -15,9 +17,6 @@ export default async function handler(req, res) {
   const supportedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
   if (!supportedMethods.includes(req.method)) {
     console.log(`Method ${req.method} not allowed`);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return res.status(405).json({ 
       error: 'Method Not Allowed', 
       message: `Method ${req.method} is not supported`,
@@ -61,7 +60,6 @@ export default async function handler(req, res) {
     const response = await fetch(razorpayUrl, requestOptions);
     
     console.log(`Razorpay response status: ${response.status}`);
-    console.log(`Razorpay response headers:`, Object.fromEntries(response.headers.entries()));
 
     // Get response data
     let data;
@@ -74,11 +72,6 @@ export default async function handler(req, res) {
       throw new Error(`Invalid JSON response from Razorpay: ${responseText}`);
     }
 
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
     console.log(`Returning response with status: ${response.status}`);
 
     // Return the response
@@ -86,11 +79,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Proxy error:', error);
-    
-    // Set CORS headers for error response
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
     res.status(500).json({ 
       error: 'Proxy error', 
