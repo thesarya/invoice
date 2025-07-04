@@ -65,12 +65,8 @@ class RazorpayService {
     this.keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
     this.keySecret = import.meta.env.VITE_RAZORPAY_KEY_SECRET || '';
     
-    // Use proxy in development, direct API in production
-    if (import.meta.env.DEV) {
-      this.baseUrl = '/api/razorpay';
-    } else {
-      this.baseUrl = 'https://api.razorpay.com/v1';
-    }
+    // Always use proxy to avoid CORS issues
+    this.baseUrl = '/api/razorpay';
     
     if (!this.keyId || !this.keySecret) {
       console.warn('Razorpay API keys not found in environment variables');
