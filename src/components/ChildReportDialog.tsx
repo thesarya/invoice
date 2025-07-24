@@ -1067,34 +1067,33 @@ This report is based on the analysis of ${childNotes.length} therapy session not
     // Create filename for toast message
     const fileName = `${childDisplayName.replace(/[^a-zA-Z0-9]/g, '_')}_progress_report_${new Date().toISOString().split('T')[0]}.html`;
 
-    const message = `Dear ${parentDisplayName},
+    // Create a short, encouraging preview from AI insights
+    const aiPreview = aiInsights
+      .split('\n')
+      .filter(line => line.trim() && !line.includes('🌟') && !line.includes('**'))
+      .slice(0, 2)
+      .join(' ')
+      .substring(0, 120) + '...';
 
-📋 *${childDisplayName}'s Personalized Progress Report*
+    const message = `🌟 *Namaste ${parentDisplayName}!*
 
-We're excited to share ${childDisplayName}'s personalized progress report with you!
+🎉 Great news! ${childDisplayName} is making wonderful progress at Aaryavart!
 
-${aiInsights.split('\n').slice(0, 5).join('\n')}
+✨ *Quick Progress Highlights:*
+${aiPreview}
 
-📊 *Report Summary:*
-• Total Reports Analyzed: ${childNotes.length}
-• Analysis Method: Analysis of therapy notes
-• Prepared by: Aaryavart Centre for Autism and Special Needs
+📊 *${childNotes.length} therapy sessions analyzed*
 
-📱 *HTML Report Downloaded:*
-A detailed HTML progress report has been automatically downloaded to your device! 
+🎨 *Beautiful HTML Report Downloaded!*
+📱 Check your Downloads folder & open the HTML file to see:
+• Interactive progress charts 📈
+• Achievement badges 🏆  
+• Detailed insights & recommendations 💡
 
-🌐 *To view the complete report:*
-1. Find the downloaded HTML file on your device
-2. Open it with Chrome, Safari, or any web browser
-3. View the beautiful, detailed progress report with charts and insights
+👨‍👩‍👧‍👦 Perfect to share with family!
 
-📧 *Sharing Instructions:*
-You can easily share this HTML file with family members via email or messaging apps.
-
-Thank you for your continued partnership in ${childDisplayName}'s development journey!
-
-Best regards,
-Aaryavart Centre for Autism and Special Needs`;
+With gratitude & pride,
+🏥 Aaryavart Centre • ${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'}`;
 
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
     console.log('Opening WhatsApp with URL length:', whatsappUrl.length);
