@@ -11,6 +11,7 @@ import InvoiceStatsCards from '../components/InvoiceStatsCards';
 import InvoiceCharts from '../components/InvoiceCharts';
 import InvoiceTable from '../components/InvoiceTable';
 import Navigation from "@/components/Navigation";
+import ChildSelectorDialog from '@/components/ChildSelectorDialog';
 
 
 interface Invoice {
@@ -81,8 +82,14 @@ const Index = () => {
       : `${year + 1}-01-01T00:00:00.000Z`;
 
     const query = `
-      query Invoices($startDate: DateTime, $endDate: DateTime) {
-        invoices(startDate: $startDate, endDate: $endDate) {
+      query Invoices($startDate: DateTime, $endDate: DateTime, $childId: ID, $status: [InvoiceStatus], $paymentMode: PaymentMode) {
+        invoices(
+          startDate: $startDate
+          endDate: $endDate
+          childId: $childId
+          status: $status
+          paymentMode: $paymentMode
+        ) {
           id invoiceNo paymentMode createdAt invoiceStatus total invoiceDate
           child { fullNameWithCaseId fatherName phone email }
         }
@@ -98,7 +105,7 @@ const Index = () => {
         },
         body: JSON.stringify({
           query,
-          variables: { startDate: start, endDate: end }
+          variables: { startDate: start, endDate: end, childId: null, status: null, paymentMode: null }
         })
       });
 
@@ -232,8 +239,14 @@ const Index = () => {
 
   const fetchMonthData = async (fetchCentre: string, start: string, end: string) => {
     const query = `
-      query Invoices($startDate: DateTime, $endDate: DateTime) {
-        invoices(startDate: $startDate, endDate: $endDate) {
+      query Invoices($startDate: DateTime, $endDate: DateTime, $childId: ID, $status: [InvoiceStatus], $paymentMode: PaymentMode) {
+        invoices(
+          startDate: $startDate
+          endDate: $endDate
+          childId: $childId
+          status: $status
+          paymentMode: $paymentMode
+        ) {
           id invoiceNo paymentMode createdAt invoiceStatus total invoiceDate
           child { fullNameWithCaseId fatherName phone email }
         }
@@ -249,7 +262,7 @@ const Index = () => {
         },
         body: JSON.stringify({
           query,
-          variables: { startDate: start, endDate: end }
+          variables: { startDate: start, endDate: end, childId: null, status: null, paymentMode: null }
         })
       });
 
@@ -561,27 +574,33 @@ const Index = () => {
             </p>
           </div>
           
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="consolidated"
-                checked={showConsolidated}
-                onCheckedChange={(checked) => setShowConsolidated(checked === true)}
-              />
-              <label htmlFor="consolidated" className="text-sm font-medium">
-                Show Consolidated Data
-              </label>
-            </div>
+          {/* Header Actions */}
+          <div className="flex flex-wrap gap-3 items-center">
+            <ChildSelectorDialog
+              centre={centre}
+              trigger={
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4" />
+                  Generate Any Child Report
+                </Button>
+              }
+            />
             
-            <Button
-              onClick={fetchConsolidatedData}
-              variant="outline"
-              size="sm"
-              className="text-xs"
-            >
-              🔄 Refresh Full Year Data
+            {/* Export Button */}
+            <Button onClick={exportData} variant="outline" className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Export Data
             </Button>
-
+            
+            <Checkbox
+              id="consolidated"
+              checked={showConsolidated}
+              onCheckedChange={(checked) => setShowConsolidated(checked === true)}
+            />
+            <label htmlFor="consolidated" className="text-sm font-medium">
+              Show Consolidated Data
+            </label>
+            
             {!showConsolidated && (
               <Select value={centre} onValueChange={setCentre}>
                 <SelectTrigger className="w-40">
@@ -616,11 +635,6 @@ const Index = () => {
             
             <Button onClick={showConsolidated ? fetchConsolidatedData : loadSingleCentreData} disabled={loading} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
               {loading ? 'Loading...' : 'Refresh Data'}
-            </Button>
-
-            <Button onClick={exportData} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export
             </Button>
           </div>
         </div>

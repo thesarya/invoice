@@ -107,3 +107,98 @@ variable
   "childId": "661cba494577c1e5ef4eae85",
   "paymentMode": null
 }
+
+
+child notees
+query childNotes($childId: String!, $stId: ID, $offset: Int, $limit: Int, $search: String, $tags: [String], $members: [String]) {
+  childNotes(
+    childId: $childId
+    stId: $stId
+    offset: $offset
+    limit: $limit
+    searchQuery: $search
+    tags: $tags
+    members: $members
+  ) {
+    notes {
+      ...ChildNotesFragment
+      __typename
+    }
+    hasMore
+    offset
+    __typename
+  }
+}
+
+fragment ChildNotesFragment on ChildNote {
+  __typename
+  id
+  title
+  text
+  child {
+    id
+    firstName
+    lastName
+    gender
+    dob
+    __typename
+  }
+  attachments {
+    name
+    size
+    type
+    fileKey
+    __typename
+  }
+  attachments {
+    name
+    size
+    type
+    fileKey
+    __typename
+  }
+  isSeenByParent
+  parentViews
+  isSharedWithParent
+  createdBy {
+    user {
+      firstName
+      lastName
+      __typename
+    }
+    id
+    __typename
+  }
+  stGoal {
+    id
+    title
+    iep {
+      id
+      __typename
+    }
+    __typename
+  }
+  isPrivate
+  tags
+  createdAt
+  items {
+    title
+    type
+    text
+    options {
+      label
+      isSelected
+      __typename
+    }
+    __typename
+  }
+}
+
+{
+  "childId": "661cba494577c1e5ef4eae85",
+  "offset": 0,
+  "limit": 30,
+  "search": "",
+  "tags": [],
+  "members": []
+}
