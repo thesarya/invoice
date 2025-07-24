@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Filter, Phone, Mail, CheckCircle, FileText as DraftIcon, Clock, Layers, Copy, MessageCircle } from "lucide-react";
 import PaymentLinkDialog from './PaymentLinkDialog';
 import BulkPaymentLinkDialog from './BulkPaymentLinkDialog';
+import BulkReportDialog from './BulkReportDialog';
 import WhatsAppDialog from './WhatsAppDialog';
 import ChildReportDialog from './ChildReportDialog';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -58,6 +59,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   const [dialogInvoice, setDialogInvoice] = React.useState<Invoice | null>(null);
   const [dialogLoading, setDialogLoading] = React.useState(false);
   const [paymentLinks, setPaymentLinks] = React.useState<{[key: string]: string}>({});
+  const [generatedReports, setGeneratedReports] = React.useState<{[key: string]: { htmlContent: string; aiInsights: string; childNotes: unknown[] }}>({});
   const { toast } = useToast();
 
   const getStatusBadge = (status: string) => {
@@ -209,6 +211,15 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 setPaymentLinks(prev => ({
                   ...prev,
                   ...links
+                }));
+              }}
+            />
+            <BulkReportDialog 
+              selectedInvoices={filteredInvoices.filter(inv => selectedInvoiceIds.includes(inv.id))}
+              onReportsGenerated={(reports) => {
+                setGeneratedReports(prev => ({
+                  ...prev,
+                  ...reports
                 }));
               }}
             />

@@ -1378,10 +1378,117 @@ With gratitude & pride,
             </div>
           )}
 
-          {/* Report Preview */}
-          {reportContent && (
+          {/* WhatsApp-Ready Preview */}
+          {reportContent && aiInsights && (
+            <div className="border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+              <div className="flex items-center gap-2 mb-3">
+                <MessageCircle className="h-5 w-5 text-green-600" />
+                <h3 className="font-semibold text-green-800">📱 WhatsApp Ready Message</h3>
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Copy & Paste</span>
+              </div>
+              
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-green-100">
+                <div className="text-sm text-gray-700 space-y-2" id="whatsapp-preview">
+                  {(() => {
+                    const childDisplayName = childData?.fullName || childName;
+                    const parentDisplayName = childData ? `${childData.parent.firstName} ${childData.parent.lastName}` : (parentName || 'Parent');
+                    
+                    // Create short preview from AI insights
+                    const aiPreview = aiInsights
+                      .split('\n')
+                      .filter(line => line.trim() && !line.includes('🌟') && !line.includes('**') && !line.includes('Analysis Period'))
+                      .slice(0, 3)
+                      .map(line => line.replace(/^[-•]\s*/, '✨ ').replace(/^\d+\.\s*/, '🎯 '))
+                      .join('\n')
+                      .substring(0, 200);
+
+                    // Extract best highlights for WhatsApp
+    const bestHighlights = aiInsights
+      .split('\n')
+      .filter(line => {
+        const lower = line.toLowerCase();
+        return line.trim() && 
+               (lower.includes('improvement') || lower.includes('progress') || 
+                lower.includes('achievement') || lower.includes('better') ||
+                lower.includes('good') || lower.includes('excellent') ||
+                lower.includes('wonderful') || lower.includes('mastered') ||
+                lower.includes('developed') || lower.includes('successful')) &&
+               !line.includes('🌟') && !line.includes('**') && !line.includes('Analysis Period');
+      })
+      .slice(0, 2)
+      .map(line => line.replace(/^[-•]\s*/, '').replace(/^\d+\.\s*/, '').trim())
+      .join('\n\n');
+
+    const whatsappMessage = `🌟 *Namaste ${parentDisplayName}!*
+
+💝 We are delighted to share *${childDisplayName}'s* one-month progress report based on his therapy session feedback.
+
+🎉 *Great News - Here's what makes us proud:*
+
+${bestHighlights || `✨ ${childDisplayName} has shown remarkable cooperation and engagement during therapy sessions\n\n🎯 We've observed positive improvements in his developmental milestones`}
+
+📊 *Report Details:*
+• Based on ${childNotes.length} therapy sessions
+• Comprehensive progress analysis
+• Interactive charts and insights included
+
+📱 *Please open the attached HTML file in your browser to see:*
+🔍 How ${childDisplayName} is progressing
+📈 Visual progress charts and achievements
+💡 Personalized recommendations for continued growth
+
+👨‍👩‍👧‍👦 *Perfect to share with family and celebrate together!*
+
+With gratitude & pride,
+🏥 *Aaryavart Centre for Autism and Special Needs Foundation*
+${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'} Centre`;
+
+                    return (
+                      <div className="font-mono text-sm">
+                        <pre className="whitespace-pre-wrap">{whatsappMessage}</pre>
+                      </div>
+                    );
+                  })()}
+                </div>
+                
+                <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const previewElement = document.getElementById('whatsapp-preview');
+                      if (previewElement) {
+                        const text = previewElement.innerText;
+                        navigator.clipboard.writeText(text).then(() => {
+                          toast({
+                            title: "📱 Copied to Clipboard",
+                            description: "WhatsApp message copied! Paste it in WhatsApp.",
+                          });
+                        }).catch(() => {
+                          toast({
+                            title: "Copy Failed",
+                            description: "Please manually copy the text above",
+                            variant: "destructive",
+                          });
+                        });
+                      }
+                    }}
+                    className="text-xs"
+                  >
+                    📋 Copy Message
+                  </Button>
+                  <span className="text-xs text-gray-500 flex items-center">
+                    💡 Copy this message and paste in WhatsApp, then mention to open the HTML file
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Full Report Preview */}
+          {reportContent && aiInsights && (
             <div className="border rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-800 mb-3">Personalized Report Preview</h3>
+              <h3 className="font-semibold text-gray-800 mb-3">📄 Full AI Insights Preview</h3>
               <div className="bg-white rounded-lg p-4 shadow-sm max-h-96 overflow-y-auto">
                 <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans leading-relaxed">{aiInsights}</pre>
               </div>
