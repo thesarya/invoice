@@ -18,155 +18,51 @@ export interface HTMLReportData {
 
 // Function to convert markdown-style text to beautiful highlight cards
 const formatAIInsights = (text: string): string => {
-  // First, let's extract key sections and create cards  
-  const lines = text.split('\n');
-  const sections: string[] = [];
-  let currentSection = '';
+  // Extract only positive highlights - keep it simple for Indian parents
+  const positiveLines = text.split('\n')
+    .filter(line => {
+      const lower = line.toLowerCase();
+      return line.trim() && 
+             (lower.includes('good') || lower.includes('improved') || 
+              lower.includes('better') || lower.includes('progress') ||
+              lower.includes('excellent') || lower.includes('wonderful') ||
+              lower.includes('achievement') || lower.includes('mastered'));
+    })
+    .slice(0, 3); // Only top 3 highlights
   
-  lines.forEach(line => {
-    if (line.includes('📊') || line.includes('🎯') || line.includes('📈') || line.includes('💡')) {
-      if (currentSection) sections.push(currentSection);
-      currentSection = line + '\n';
-    } else {
-      currentSection += line + '\n';
-    }
-  });
-  if (currentSection) sections.push(currentSection);
-  
-  let formattedContent = '';
-  
-  sections.forEach((section, index) => {
-    const trimmedSection = section.trim();
-    
-    // Main title
-    if (trimmedSection.includes('🌟') && trimmedSection.includes('Progress Summary')) {
-      const titleMatch = trimmedSection.match(/🌟\s*\*\*(.*?)\*\*\s*🌟/);
-      if (titleMatch) {
-        formattedContent += `
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h2 style="color: #FFE0B2; font-size: 1.8rem; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-              🌟 ${titleMatch[1]} 🌟
-            </h2>
-          </div>`;
-      }
-      return;
-    }
-    
-    // Extract section title and content
-    let sectionTitle = '';
-    let sectionIcon = '';
-    let sectionContent = '';
-    let cardColor = '';
-    
-         if (trimmedSection.startsWith('📊')) {
-       sectionIcon = '📊';
-       sectionTitle = 'Therapeutic Progress Observed';
-       cardColor = 'linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%)';
-     } else if (trimmedSection.startsWith('🎯')) {
-       sectionIcon = '🎯';
-       sectionTitle = 'Key Achievements';
-       cardColor = 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)';
-     } else if (trimmedSection.startsWith('📈')) {
-       sectionIcon = '📈';
-       sectionTitle = 'Areas of Growth';
-       cardColor = 'linear-gradient(135deg, #DDA0DD 0%, #BA55D3 100%)';
-     } else if (trimmedSection.startsWith('💡')) {
-       sectionIcon = '💡';
-       sectionTitle = 'Recommendations';
-       cardColor = 'linear-gradient(135deg, #E6E6FA 0%, #9370DB 100%)';
-     }
-    
-    // Extract content after the header
-    const contentMatch = trimmedSection.match(/\*\*(.*?)\*\*[\s\S]*?\n([\s\S]*)/);
-    if (contentMatch) {
-      sectionContent = contentMatch[2];
-    } else {
-      // Remove emoji headers from content
-     if (trimmedSection.includes('📊')) sectionContent = trimmedSection.replace(/📊\s*\*\*.*?\*\*\s*/, '');
-     else if (trimmedSection.includes('🎯')) sectionContent = trimmedSection.replace(/🎯\s*\*\*.*?\*\*\s*/, '');
-     else if (trimmedSection.includes('📈')) sectionContent = trimmedSection.replace(/📈\s*\*\*.*?\*\*\s*/, '');
-     else if (trimmedSection.includes('💡')) sectionContent = trimmedSection.replace(/💡\s*\*\*.*?\*\*\s*/, '');
-    }
-    
-    // Clean and format the content
-    sectionContent = sectionContent
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^\s*[-•]\s+/gm, '✨ ')
-      .replace(/^\s*(\d+)\.\s+/gm, '<strong>$1.</strong> ')
-      .replace(/\n/g, '<br>');
-    
-    if (sectionTitle && sectionContent.trim()) {
-      formattedContent += `
-        <div style="
-          background: ${cardColor};
-          border-radius: 16px;
-          padding: 20px;
-          margin-bottom: 20px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-          position: relative;
-          overflow: hidden;
-          color: white;
-        ">
-          <div style="
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            width: 60px;
-            height: 60px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 50%;
-          "></div>
-          <div style="
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            position: relative;
-          ">
-            <span style="font-size: 1.8rem; margin-right: 12px;">${sectionIcon}</span>
-            <h3 style="
-              margin: 0;
-              font-size: 1.3rem;
-              font-weight: 600;
-              text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            ">${sectionTitle}</h3>
-          </div>
-          <div style="
-            line-height: 1.7;
-            font-size: 1rem;
-            position: relative;
-          ">
-            ${sectionContent}
-          </div>
-        </div>`;
-    }
-  });
-  
-  // Add a beautiful conclusion card
-  if (text.includes('therapy sessions reviewed')) {
-    const sessionMatch = text.match(/(\d+)\s+therapy sessions reviewed/);
-    const sessionCount = sessionMatch ? sessionMatch[1] : '30';
-    
-    formattedContent += `
-      <div style="
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        border-radius: 16px;
-        padding: 20px;
-        margin-top: 30px;
-        text-align: center;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        color: #8B4513;
-      ">
-        <div style="font-size: 1.5rem; margin-bottom: 10px;">🎉✨</div>
-        <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 8px;">
-          Analysis Complete!
-        </div>
-        <div style="font-size: 0.95rem; opacity: 0.8;">
-          Based on ${sessionCount} therapy sessions • Generated with love by Aaryavart Centre
-        </div>
+  if (positiveLines.length === 0) {
+    return `
+      <div class="bg-white rounded-lg p-6 text-center">
+        <div class="text-4xl mb-3">🌟</div>
+        <div class="text-xl font-semibold text-gray-800 mb-2">बहुत अच्छे!</div>
+        <div class="text-gray-600">आपका बच्चा अच्छी तरक्की कर रहा है।</div>
       </div>`;
   }
   
-  return formattedContent || text.replace(/\n/g, '<br>');
+  let formattedContent = '';
+  
+  positiveLines.forEach((line, index) => {
+    const cleanLine = line
+      .replace(/^[-•*]\s*/, '')
+      .replace(/^\d+\.\s*/, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .trim();
+    
+    const icons = ['🌟', '👏', '🎯'];
+    
+    formattedContent += `
+      <div class="bg-white rounded-lg p-4 mb-3 shadow-sm border-l-4 border-accent-400">
+        <div class="flex items-start">
+          <span class="text-2xl mr-3">${icons[index]}</span>
+          <div>
+            <div class="font-semibold text-gray-800 mb-1">खुशी की बात ${index + 1}</div>
+            <div class="text-gray-600 leading-relaxed">${cleanLine}</div>
+          </div>
+        </div>
+      </div>`;
+  });
+  
+  return formattedContent;
 };
 
 export const generateHTMLReport = (data: HTMLReportData): string => {
@@ -266,10 +162,9 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
     <div class="bg-white rounded-xl p-6 mb-6 shadow-sm border border-primary-100">
       <div class="text-center">
         <div class="text-4xl mb-4">🎉</div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Congratulations!</h2>
-        <p class="text-gray-600 leading-relaxed">
-          Your child is making wonderful progress in their development journey. 
-          This report celebrates their achievements and highlights the positive changes we've observed.
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">बधाई हो!</h2>
+        <p class="text-gray-600 leading-relaxed text-lg">
+          ${data.childName} अच्छी तरक्की कर रहा है। यह रिपोर्ट उसकी खुशी की बातें दिखाती है।
         </p>
       </div>
     </div>
@@ -296,27 +191,25 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
 
     <!-- Achievement Badges -->
     <div class="bg-white rounded-xl p-6 mb-6 shadow-sm border border-primary-100">
-      <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">🏆 Achievements Unlocked</h3>
+      <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">🏆 खुशी की बात</h3>
       <div class="flex flex-wrap justify-center gap-2">
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">🎯 Consistent Attendance</span>
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">💪 Active Participation</span>
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">🤝 Great Cooperation</span>
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">📈 Steady Progress</span>
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">😊 Positive Attitude</span>
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">🌟 Star Performer</span>
+        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">🎯 अच्छी उपस्थिति</span>
+        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">💪 सहयोग</span>
+        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">📈 तरक्की</span>
+        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">😊 अच्छा व्यवहार</span>
       </div>
     </div>
 
     <!-- Charts Section -->
     <div class="grid md:grid-cols-2 gap-6 mb-6">
       <div class="bg-white rounded-xl p-6 shadow-sm border border-primary-100">
-        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">📊 Development Areas</h3>
+        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">📊 विकास के क्षेत्र</h3>
         <div class="h-64 flex items-center justify-center">
           <canvas id="skillsChart" class="max-w-full max-h-full"></canvas>
         </div>
       </div>
       <div class="bg-white rounded-xl p-6 shadow-sm border border-primary-100">
-        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">📈 Weekly Progress</h3>
+        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">📈 साप्ताहिक प्रगति</h3>
         <div class="h-64 flex items-center justify-center">
           <canvas id="progressChart" class="max-w-full max-h-full"></canvas>
         </div>
@@ -326,7 +219,7 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
     <!-- AI Insights -->
     <div class="bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl p-6 mb-6 border border-primary-200">
       <h3 class="text-xl font-bold text-primary-800 mb-4 flex items-center">
-        <span class="mr-2">🧠</span> Personalized Progress Insights
+        <span class="mr-2">🌟</span> आपके बच्चे की खुशी की बातें
       </h3>
       <div class="text-primary-700 leading-relaxed">
         ${formattedAIInsights}
@@ -335,7 +228,7 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
 
     <!-- Therapy Notes -->
     <div class="bg-white rounded-xl p-6 mb-6 shadow-sm border border-primary-100">
-      <h3 class="text-xl font-bold text-gray-800 mb-4">📝 Recent Therapy Highlights</h3>
+      <h3 class="text-xl font-bold text-gray-800 mb-4">📝 हाल की थेरेपी की खुशी की बातें</h3>
       <div class="space-y-4">
         ${data.notes && data.notes.length > 0 ? data.notes.slice(0, 3).map(note => `
           <div class="border-l-4 border-accent-400 bg-gradient-to-r from-accent-50 to-white p-4 rounded-r-lg">
@@ -351,15 +244,15 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
 
     <!-- Footer -->
     <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-center text-white">
-      <div class="text-xl font-bold mb-2">🙏 Thank you for trusting us</div>
+      <div class="text-xl font-bold mb-2">🙏 हमारे साथ जुड़ने के लिए धन्यवाद</div>
       <p class="opacity-90 mb-4">
-        We're honored to be part of ${data.childName}'s development journey. 
-        Together, we're building a brighter future filled with possibilities.
+        ${data.childName} के विकास में साझीदार बनना हमारे लिए गर्व की बात है। 
+        साथ मिलकर हम एक उज्ज्वल भविष्य बना रहे हैं।
       </p>
       <div class="bg-white/20 rounded-lg p-4">
-        <div class="font-semibold mb-1">🏥 Aaryavart Centre for Autism and Special Needs</div>
+        <div class="font-semibold mb-1">🏥 आर्यावर्त सेंटर फॉर ऑटिज्म एंड स्पेशल नीड्स</div>
         <div class="text-sm opacity-80">
-          Report Generated: ${new Date().toLocaleDateString('en-IN')} • ${data.centre} Centre
+          रिपोर्ट तारीख: ${new Date().toLocaleDateString('en-IN')} • ${data.centre} केंद्र
         </div>
       </div>
     </div>
