@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Download } from "lucide-react";
+import { Download, Trophy } from "lucide-react";
 import InvoiceStatsCards from '../components/InvoiceStatsCards';
 import InvoiceCharts from '../components/InvoiceCharts';
 import InvoiceTable from '../components/InvoiceTable';
+import Navigation from "@/components/Navigation";
+
 
 interface Invoice {
   id: string;
@@ -441,14 +443,118 @@ const Index = () => {
     revenue: yearData.total || 0
   }));
 
+  // Calculate customer insights
+  const calculateCustomerInsights = () => {
+    const customerMap = new Map<string, {
+      name: string;
+      fatherName?: string;
+      phone?: string;
+      email?: string;
+      totalPaid: number;
+      totalPending: number;
+      invoiceCount: number;
+      paidInvoiceCount: number;
+      pendingInvoiceCount: number;
+      centre: string;
+      lastPaymentDate?: string;
+      lastInvoiceDate?: string;
+      invoices: Invoice[];
+    }>();
+
+    // Use consolidated invoices for customer insights (full year data)
+    const allInvoices = showConsolidated ? consolidatedInvoices : filteredInvoices;
+    
+    // Group invoices by customer
+    allInvoices.forEach(invoice => {
+      const customerKey = `${invoice.child?.fullNameWithCaseId || 'Unknown'}_${invoice.centre}`;
+      const existing = customerMap.get(customerKey);
+      
+      if (existing) {
+        existing.invoiceCount++;
+        existing.invoices.push(invoice);
+        
+        if (invoice.invoiceStatus === 'PAID') {
+          existing.totalPaid += invoice.total || 0;
+          existing.paidInvoiceCount++;
+          if (!existing.lastPaymentDate || new Date(invoice.invoiceDate) > new Date(existing.lastPaymentDate)) {
+            existing.lastPaymentDate = invoice.invoiceDate;
+          }
+        } else {
+          existing.totalPending += invoice.total || 0;
+          existing.pendingInvoiceCount++;
+        }
+        
+        if (!existing.lastInvoiceDate || new Date(invoice.invoiceDate) > new Date(existing.lastInvoiceDate)) {
+          existing.lastInvoiceDate = invoice.invoiceDate;
+        }
+      } else {
+        customerMap.set(customerKey, {
+          name: invoice.child?.fullNameWithCaseId || 'Unknown',
+          fatherName: invoice.child?.fatherName,
+          phone: invoice.child?.phone,
+          email: invoice.child?.email,
+          totalPaid: invoice.invoiceStatus === 'PAID' ? (invoice.total || 0) : 0,
+          totalPending: invoice.invoiceStatus !== 'PAID' ? (invoice.total || 0) : 0,
+          invoiceCount: 1,
+          paidInvoiceCount: invoice.invoiceStatus === 'PAID' ? 1 : 0,
+          pendingInvoiceCount: invoice.invoiceStatus !== 'PAID' ? 1 : 0,
+          centre: invoice.centre || 'unknown',
+          lastPaymentDate: invoice.invoiceStatus === 'PAID' ? invoice.invoiceDate : undefined,
+          lastInvoiceDate: invoice.invoiceDate,
+          invoices: [invoice]
+        });
+      }
+    });
+
+    const latePayingCustomers = Array.from(customerMap.values())
+      .filter(customer => customer.totalPending > 0)
+      .map(customer => {
+        const today = new Date();
+        const lastInvoiceDate = new Date(customer.lastInvoiceDate || '');
+        const overdueDays = Math.floor((today.getTime() - lastInvoiceDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        return {
+          name: customer.name,
+          fatherName: customer.fatherName,
+          phone: customer.phone,
+          email: customer.email,
+          pendingAmount: customer.totalPending,
+          overdueDays: Math.max(0, overdueDays),
+          centre: customer.centre,
+          invoiceCount: customer.pendingInvoiceCount,
+          lastReminderDate: customer.lastInvoiceDate // Using last invoice date as proxy for reminder date
+        };
+      })
+      .sort((a, b) => b.overdueDays - a.overdueDays);
+
+    return { latePayingCustomers };
+  };
+
+  const { latePayingCustomers } = calculateCustomerInsights();
+  
+  // Debug logging for customer insights
+  console.log('Customer Insights Debug:', {
+    totalInvoices: filteredInvoices.length,
+    consolidatedInvoices: consolidatedInvoices.length,
+    showConsolidated,
+    latePayingCount: latePayingCustomers.length
+  });
+
+  const selectedCentre = centre === 'gkp' ? 'GKP' : 'Lucknow';
+  const handleCentreChange = (newCentre: 'GKP' | 'Lucknow') => {
+    setCentre(newCentre === 'GKP' ? 'gkp' : 'lko');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <Navigation selectedCentre={selectedCentre} onCentreChange={handleCentreChange} />
+      
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Aaryavart Invoice Dashboard
+              Invoice Management
             </h1>
             <p className="text-muted-foreground mt-1">
               Monitor and analyze invoice data across different centres
@@ -466,6 +572,15 @@ const Index = () => {
                 Show Consolidated Data
               </label>
             </div>
+            
+            <Button
+              onClick={fetchConsolidatedData}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            >
+              🔄 Refresh Full Year Data
+            </Button>
 
             {!showConsolidated && (
               <Select value={centre} onValueChange={setCentre}>
@@ -537,6 +652,8 @@ const Index = () => {
           centre={centre}
         />
 
+
+
         {/* Tabs for Invoices and Charts */}
         <Tabs defaultValue="invoices" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -567,6 +684,7 @@ const Index = () => {
               monthlyRevenue={monthlyRevenueForChart}
               quarterlyRevenue={quarterlyRevenue}
               yearlyRevenue={yearlyRevenueForChart}
+              latePayingCustomers={latePayingCustomers}
             />
           </TabsContent>
         </Tabs>

@@ -17,6 +17,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/invoices" element={<Index />} />
           <Route path="/payment-callback" element={<PaymentCallback />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

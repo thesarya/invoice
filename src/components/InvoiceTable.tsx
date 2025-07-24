@@ -6,6 +6,7 @@ import { FileText, Filter, Phone, Mail, CheckCircle, FileText as DraftIcon, Cloc
 import PaymentLinkDialog from './PaymentLinkDialog';
 import BulkPaymentLinkDialog from './BulkPaymentLinkDialog';
 import WhatsAppDialog from './WhatsAppDialog';
+import ChildReportDialog from './ChildReportDialog';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -343,19 +344,37 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                     {new Date(invoice.invoiceDate).toLocaleDateString()}
                   </td>
                   <td className="py-3 px-4">
-                    <PaymentLinkDialog 
-                      invoice={invoice} 
-                      onPaymentLinkGenerated={(invoiceId, paymentLink) => {
-                        setPaymentLinks(prev => ({
-                          ...prev,
-                          [invoiceId]: paymentLink
-                        }));
-                      }}
-                    />
-                    <Dialog open={openDialogId === invoice.id} onOpenChange={(open) => open ? handleOpenDialog(invoice.id) : handleCloseDialog()}>
-                      <DialogTrigger asChild>
-                        <button className="ml-2 px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-xs">View</button>
-                      </DialogTrigger>
+                    <div className="flex items-center gap-2">
+                      <PaymentLinkDialog 
+                        invoice={invoice} 
+                        onPaymentLinkGenerated={(invoiceId, paymentLink) => {
+                          setPaymentLinks(prev => ({
+                            ...prev,
+                            [invoiceId]: paymentLink
+                          }));
+                        }}
+                      />
+                      <ChildReportDialog
+                        childId={invoice.child?.fullNameWithCaseId || 'test-child-id'}
+                        childName={invoice.child?.fullNameWithCaseId || 'Unknown Child'}
+                        parentPhone={invoice.child?.phone}
+                        parentName={invoice.child?.fatherName}
+                        centre={invoice.centre || 'gkp'}
+                        trigger={
+                          <button 
+                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs flex items-center gap-1"
+                            onClick={() => console.log('Invoice child data:', invoice.child)}
+                          >
+                            <FileText className="h-3 w-3" />
+                            Report
+                          </button>
+                        }
+                      />
+
+                      <Dialog open={openDialogId === invoice.id} onOpenChange={(open) => open ? handleOpenDialog(invoice.id) : handleCloseDialog()}>
+                        <DialogTrigger asChild>
+                          <button className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-xs">View</button>
+                        </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Invoice Details</DialogTitle>
@@ -375,8 +394,9 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                             {!dialogLoading && !dialogInvoice && <div>Failed to load invoice details.</div>}
                           </DialogDescription>
                         </DialogHeader>
-                      </DialogContent>
-                    </Dialog>
+                                              </DialogContent>
+                      </Dialog>
+                    </div>
                   </td>
                 </tr>
               ))}

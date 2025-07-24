@@ -1,0 +1,109 @@
+this query give invocies in any month ; if child id null then all invoice ; if child id then hisinvoice 
+query Invoices($startDate: DateTime, $endDate: DateTime, $childId: ID, $status: [InvoiceStatus], $paymentMode: PaymentMode) {
+  invoices(
+    startDate: $startDate
+    endDate: $endDate
+    childId: $childId
+    status: $status
+    paymentMode: $paymentMode
+  ) {
+    ...InvoiceParts
+    __typename
+  }
+}
+
+fragment InvoiceParts on Invoice {
+  id
+  invoiceNo
+  paymentMode
+  createdAt
+  child {
+    id
+    firstName
+    lastName
+    fullNameWithCaseId
+    __typename
+  }
+  member {
+    id
+    user {
+      fullName
+      firstName
+      lastName
+      __typename
+    }
+    __typename
+  }
+  subtotal
+  tax
+  discount
+  organization {
+    name
+    address
+    image
+    contactEmail
+    contactNo
+    __typename
+  }
+  name
+  email
+  contactNo
+  countryCode
+  invoiceDate
+  dueDate
+  billingAddress {
+    street
+    city
+    state
+    country
+    postalCode
+    __typename
+  }
+  discount
+  createdBy {
+    id
+    __typename
+  }
+  items {
+    id
+    title
+    description
+    price
+    unit
+    taxRate {
+      id
+      title
+      rate
+      __typename
+    }
+    __typename
+  }
+  invoiceStatus
+  total
+  receiptsTotal
+  balanceDue
+  paymentReceipts {
+    id
+    amount
+    paymentMode
+    createdAt
+    isDeleted
+    paymentDate
+    __typename
+  }
+  currencyCode
+  selfMemo
+  customerMemo
+  referenceNumber
+  createdAt
+  updatedAt
+  billingScheme
+  __typename
+}
+variable 
+{
+  "startDate": "2024-07-30T22:00:00.000Z",
+  "endDate": "2025-07-24T21:59:59.999Z",
+  "childId": "661cba494577c1e5ef4eae85",
+  "paymentMode": null
+}
