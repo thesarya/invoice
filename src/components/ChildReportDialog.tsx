@@ -1067,33 +1067,46 @@ This report is based on the analysis of ${childNotes.length} therapy session not
     // Create filename for toast message
     const fileName = `${childDisplayName.replace(/[^a-zA-Z0-9]/g, '_')}_progress_report_${new Date().toISOString().split('T')[0]}.html`;
 
-    // Create a short, encouraging preview from AI insights
-    const aiPreview = aiInsights
+    // Extract best highlights for WhatsApp (same as preview)
+    const bestHighlights = aiInsights
       .split('\n')
-      .filter(line => line.trim() && !line.includes('🌟') && !line.includes('**'))
+      .filter(line => {
+        const lower = line.toLowerCase();
+        return line.trim() && 
+               (lower.includes('improvement') || lower.includes('progress') || 
+                lower.includes('achievement') || lower.includes('better') ||
+                lower.includes('good') || lower.includes('excellent') ||
+                lower.includes('wonderful') || lower.includes('mastered') ||
+                lower.includes('developed') || lower.includes('successful')) &&
+               !line.includes('🌟') && !line.includes('**') && !line.includes('Analysis Period');
+      })
       .slice(0, 2)
-      .join(' ')
-      .substring(0, 120) + '...';
+      .map(line => line.replace(/^[-•]\s*/, '').replace(/^\d+\.\s*/, '').trim())
+      .join('\n\n');
 
     const message = `🌟 *Namaste ${parentDisplayName}!*
 
-🎉 Great news! ${childDisplayName} is making wonderful progress at Aaryavart!
+💝 We are delighted to share *${childDisplayName}'s* one-month progress report based on his therapy session feedback.
 
-✨ *Quick Progress Highlights:*
-${aiPreview}
+🎉 *Great News - Here's what makes us proud:*
 
-📊 *${childNotes.length} therapy sessions analyzed*
+${bestHighlights || `✨ ${childDisplayName} has shown remarkable cooperation and engagement during therapy sessions\n\n🎯 We've observed positive improvements in his developmental milestones`}
 
-🎨 *Beautiful HTML Report Downloaded!*
-📱 Check your Downloads folder & open the HTML file to see:
-• Interactive progress charts 📈
-• Achievement badges 🏆  
-• Detailed insights & recommendations 💡
+📊 *Report Details:*
+• Based on ${childNotes.length} therapy sessions
+• Comprehensive progress analysis
+• Interactive charts and insights included
 
-👨‍👩‍👧‍👦 Perfect to share with family!
+📱 *Please open the attached HTML file in your browser to see:*
+🔍 How ${childDisplayName} is progressing
+📈 Visual progress charts and achievements
+💡 Personalized recommendations for continued growth
+
+👨‍👩‍👧‍👦 *Perfect to share with family and celebrate together!*
 
 With gratitude & pride,
-🏥 Aaryavart Centre • ${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'}`;
+🏥 *Aaryavart Centre for Autism and Special Needs Foundation*
+${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'} Centre`;
 
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
     console.log('Opening WhatsApp with URL length:', whatsappUrl.length);

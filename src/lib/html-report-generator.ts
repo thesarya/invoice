@@ -34,8 +34,8 @@ const formatAIInsights = (text: string): string => {
     return `
       <div class="bg-white rounded-lg p-6 text-center">
         <div class="text-4xl mb-3">🌟</div>
-        <div class="text-xl font-semibold text-gray-800 mb-2">बहुत अच्छे!</div>
-        <div class="text-gray-600">आपका बच्चा अच्छी तरक्की कर रहा है।</div>
+        <div class="text-xl font-semibold text-gray-800 mb-2">Excellent Progress!</div>
+        <div class="text-gray-600">Your child is making wonderful progress in their development.</div>
       </div>`;
   }
   
@@ -54,10 +54,10 @@ const formatAIInsights = (text: string): string => {
       <div class="bg-white rounded-lg p-4 mb-3 shadow-sm border-l-4 border-accent-400">
         <div class="flex items-start">
           <span class="text-2xl mr-3">${icons[index]}</span>
-          <div>
-            <div class="font-semibold text-gray-800 mb-1">खुशी की बात ${index + 1}</div>
-            <div class="text-gray-600 leading-relaxed">${cleanLine}</div>
-          </div>
+                     <div>
+             <div class="font-semibold text-gray-800 mb-1">Great News ${index + 1}</div>
+             <div class="text-gray-600 leading-relaxed">${cleanLine}</div>
+           </div>
         </div>
       </div>`;
   });
@@ -162,9 +162,9 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
     <div class="bg-white rounded-xl p-6 mb-6 shadow-sm border border-primary-100">
       <div class="text-center">
         <div class="text-4xl mb-4">🎉</div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">बधाई हो!</h2>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Congratulations!</h2>
         <p class="text-gray-600 leading-relaxed text-lg">
-          ${data.childName} अच्छी तरक्की कर रहा है। यह रिपोर्ट उसकी खुशी की बातें दिखाती है।
+          ${data.childName} is making wonderful progress! This report celebrates their achievements.
         </p>
       </div>
     </div>
@@ -191,25 +191,25 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
 
     <!-- Achievement Badges -->
     <div class="bg-white rounded-xl p-6 mb-6 shadow-sm border border-primary-100">
-      <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">🏆 खुशी की बात</h3>
+      <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">🏆 Great Achievements</h3>
       <div class="flex flex-wrap justify-center gap-2">
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">🎯 अच्छी उपस्थिति</span>
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">💪 सहयोग</span>
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">📈 तरक्की</span>
-        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">😊 अच्छा व्यवहार</span>
+        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">🎯 Good Attendance</span>
+        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">💪 Great Cooperation</span>
+        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">📈 Steady Progress</span>
+        <span class="bg-gradient-to-r from-primary-200 to-primary-300 text-primary-800 px-4 py-2 rounded-full text-sm font-semibold">😊 Positive Attitude</span>
       </div>
     </div>
 
     <!-- Charts Section -->
     <div class="grid md:grid-cols-2 gap-6 mb-6">
       <div class="bg-white rounded-xl p-6 shadow-sm border border-primary-100">
-        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">📊 विकास के क्षेत्र</h3>
+        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">📊 Development Areas</h3>
         <div class="h-64 flex items-center justify-center">
           <canvas id="skillsChart" class="max-w-full max-h-full"></canvas>
         </div>
       </div>
       <div class="bg-white rounded-xl p-6 shadow-sm border border-primary-100">
-        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">📈 साप्ताहिक प्रगति</h3>
+        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">📈 Weekly Progress</h3>
         <div class="h-64 flex items-center justify-center">
           <canvas id="progressChart" class="max-w-full max-h-full"></canvas>
         </div>
@@ -219,7 +219,7 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
     <!-- AI Insights -->
     <div class="bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl p-6 mb-6 border border-primary-200">
       <h3 class="text-xl font-bold text-primary-800 mb-4 flex items-center">
-        <span class="mr-2">🌟</span> आपके बच्चे की खुशी की बातें
+        <span class="mr-2">🌟</span> Progress Highlights
       </h3>
       <div class="text-primary-700 leading-relaxed">
         ${formattedAIInsights}
@@ -228,7 +228,7 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
 
     <!-- Therapy Notes -->
     <div class="bg-white rounded-xl p-6 mb-6 shadow-sm border border-primary-100">
-      <h3 class="text-xl font-bold text-gray-800 mb-4">📝 हाल की थेरेपी की खुशी की बातें</h3>
+      <h3 class="text-xl font-bold text-gray-800 mb-4">📝 Recent Therapy Highlights</h3>
       <div class="space-y-4">
         ${data.notes && data.notes.length > 0 ? data.notes.slice(0, 3).map(note => `
           <div class="border-l-4 border-accent-400 bg-gradient-to-r from-accent-50 to-white p-4 rounded-r-lg">
@@ -244,15 +244,15 @@ export const generateHTMLReport = (data: HTMLReportData): string => {
 
     <!-- Footer -->
     <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-center text-white">
-      <div class="text-xl font-bold mb-2">🙏 हमारे साथ जुड़ने के लिए धन्यवाद</div>
+      <div class="text-xl font-bold mb-2">🙏 Thank you for trusting us</div>
       <p class="opacity-90 mb-4">
-        ${data.childName} के विकास में साझीदार बनना हमारे लिए गर्व की बात है। 
-        साथ मिलकर हम एक उज्ज्वल भविष्य बना रहे हैं।
+        We're honored to be part of ${data.childName}'s development journey. 
+        Together, we're building a brighter future filled with possibilities.
       </p>
       <div class="bg-white/20 rounded-lg p-4">
-        <div class="font-semibold mb-1">🏥 आर्यावर्त सेंटर फॉर ऑटिज्म एंड स्पेशल नीड्स</div>
+        <div class="font-semibold mb-1">🏥 Aaryavart Centre for Autism and Special Needs</div>
         <div class="text-sm opacity-80">
-          रिपोर्ट तारीख: ${new Date().toLocaleDateString('en-IN')} • ${data.centre} केंद्र
+          Report Generated: ${new Date().toLocaleDateString('en-IN')} • ${data.centre} Centre
         </div>
       </div>
     </div>
