@@ -178,6 +178,8 @@ const ChildReportDialog: React.FC<ChildReportDialogProps> = ({
   trigger
 }) => {
   const [open, setOpen] = useState(false);
+  // LLM provider selection: 'deepskeek' or 'openai'
+  const [llmProvider, setLlmProvider] = useState<'deepskeek' | 'openai'>('deepskeek');
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [childNotes, setChildNotes] = useState<ChildNote[]>([]);
@@ -195,6 +197,7 @@ const ChildReportDialog: React.FC<ChildReportDialogProps> = ({
   };
 
   const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_KEY_SECRET || 'sk-test-dummy-key-for-testing';
+  const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
   const API_BASE_URL = 'https://care.kidaura.in/api/graphql';
 
   useEffect(() => {
@@ -277,9 +280,15 @@ const ChildReportDialog: React.FC<ChildReportDialogProps> = ({
     if (childId.includes('_')) {
       actualChildId = childId.split('_')[1] || childId;
     }
-    
+    // Remove fallback/test ID logic. Only use provided childId for correct center.
+    // If actualChildId is invalid, do not fetch.
     if (!actualChildId || actualChildId.length < 10) {
-      actualChildId = "6313291ba48323a8fd2df4ca";
+      toast({
+        title: "Invalid Child ID",
+        description: "Could not resolve a valid child ID for this center.",
+        variant: "destructive",
+      });
+      return;
     }
     
     try {
@@ -541,55 +550,77 @@ const ChildReportDialog: React.FC<ChildReportDialogProps> = ({
       return;
     }
 
+    // Provider selection logic
+    if (llmProvider === 'openai') {
+      if (!OPENAI_API_KEY) {
+        toast({
+          title: "❌ OpenAI API Key Missing",
+          description: "Please set OPENAI_API_KEY in your .env.local file.",
+          variant: "destructive",
+        });
+        setGenerating(false);
+        return;
+      }
+      setGenerating(true);
+      try {
+        const childFullName = childData?.fullName || childName;
+        const notesData = childNotes.map(note => ({
+          title: note.title,
+          text: note.text,
+          date: new Date(note.createdAt).toLocaleDateString(),
+          therapist: `${note.createdBy.user.firstName} ${note.createdBy.user.lastName}`,
+          tags: note.tags
+        }));
+        const prompt = `You are an expert child development specialist and therapist at Aaryavart Centre for Autism and Special Needs.\n\nPlease analyze the following therapy session notes for ${childFullName} and create a concise, positive progress report focusing ONLY on therapeutic insights and improvements.\n\n**Notes Data:**\n${JSON.stringify(notesData, null, 2)}\n\n**Requirements:**\n1. Focus ONLY on therapeutic progress and improvements from the notes\n2. Be specific about what progress was observed in the actual notes\n3. Keep it encouraging and positive for parents\n4. No personal details (address, phone, etc.) - only therapy insights\n5. Use simple, clear language that parents can understand\n\n**Format the response as a simple progress summary:**\n\n🌟 **${childFullName}'s Progress Summary** 🌟\n\n📊 **Therapeutic Progress Observed:**\n[List specific improvements and progress observed in the therapy notes]\n\n🎯 **Key Achievements:**\n[Highlight the main achievements and milestones from the notes]\n\n📈 **Areas of Growth:**\n[Mention specific areas where growth was noted]\n\n💡 **Recommendations:**\n[Simple suggestions based on the observed progress]\n\n**Analysis Period:** ${childNotes.length} therapy sessions reviewed\n\n*With gratitude for your trust in your child's development journey.*\n\n**Aaryavart Centre for Autism and Special Needs**`;
+        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 2000
+          })
+        });
+        const openaiData = await openaiResponse.json();
+        if (openaiData.choices && openaiData.choices[0] && openaiData.choices[0].message) {
+          const insights = openaiData.choices[0].message.content;
+          setAiInsights(insights);
+          generateReportContent(insights);
+          toast({
+            title: "✅ AI Report Generated (OpenAI)",
+            description: `Personalized report created from ${childNotes.length} therapy notes using OpenAI GPT`,
+          });
+        } else {
+          throw new Error('Invalid response from OpenAI API');
+        }
+      } catch (error) {
+        console.error('OpenAI error:', error);
+        toast({
+          title: "OpenAI Error",
+          description: "Failed to generate report using OpenAI.",
+          variant: "destructive",
+        });
+      } finally {
+        setGenerating(false);
+      }
+      return;
+    }
+    // Default: DeepSeek (existing logic)
     if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'sk-test-dummy-key-for-testing') {
       // For testing, generate dummy insights if DeepSeek API key is not configured
       console.log('Using demo mode - no DeepSeek API key');
-      const dummyInsights = `🌟 **${childData?.fullName || childName}'s Progress Summary** 🌟
-
-*From Aaryavart Centre for Autism and Special Needs*
-
-📊 **Executive Summary**
-${childData?.fullName || childName} has shown remarkable progress in therapy sessions. Based on analysis of ${childNotes.length} detailed therapy notes, we can see consistent improvement across multiple developmental areas.
-
-🎯 **Key Achievements (Based on ${childNotes.length} Therapy Sessions)**
-• Improved focus and attention during structured activities
-• Enhanced communication and social interaction skills
-• Better emotional regulation and self-control
-• Progress in motor skills and coordination
-• Increased participation in group activities
-
-💪 **Areas of Excellence**
-Your child demonstrates exceptional determination and willingness to learn. The therapy team has noted significant improvements in following instructions and engaging with learning materials.
-
-🏠 **Home Activities & Recommendations**
-• Continue structured daily routines
-• Practice communication exercises daily
-• Encourage physical activities and outdoor play
-• Maintain consistent meal times and nutrition
-• Create calm learning environments at home
-
-💡 **Parent Tips for Indian Families**
-• Celebrate small victories and progress milestones
-• Maintain patience and consistent support
-• Involve extended family in the therapy process
-• Use cultural activities and traditions as learning tools
-
-🌈 **Positive Highlights & Progress**
-${childData?.fullName || childName} continues to amaze us with their unique abilities and progress. Every therapy session brings new achievements and milestones.
-
-📈 **Development Milestones**
-Regular therapy sessions show consistent improvement in all targeted areas. Your child is progressing well within their individualized development plan.
-
-*Report Period: Analysis of ${childNotes.length} Recent Therapy Sessions*
-*Total Reports Analyzed: ${childNotes.length}*
-
-*With love from Aaryavart Centre for Autism and Special Needs* 💙
-
-**Note:** This is a demo report generated from ${childNotes.length} actual therapy notes. Configure VITE_DEEPSEEK_KEY_SECRET for AI-powered insights.`;
-
+      const dummyInsights = `🌟 **${childData?.fullName || childName}'s Progress Summary** 🌟\n\n*From Aaryavart Centre for Autism and Special Needs*\n\n📊 **Executive Summary**\n${childData?.fullName || childName} has shown remarkable progress in therapy sessions. Based on analysis of ${childNotes.length} detailed therapy notes, we can see consistent improvement across multiple developmental areas.\n\n🎯 **Key Achievements (Based on ${childNotes.length} Therapy Sessions)**\n• Improved focus and attention during structured activities\n• Enhanced communication and social interaction skills\n• Better emotional regulation and self-control\n• Progress in motor skills and coordination\n• Increased participation in group activities\n\n💪 **Areas of Excellence**\nYour child demonstrates exceptional determination and willingness to learn. The therapy team has noted significant improvements in following instructions and engaging with learning materials.\n\n🏠 **Home Activities & Recommendations**\n• Continue structured daily routines\n• Practice communication exercises daily\n• Encourage physical activities and outdoor play\n• Maintain consistent meal times and nutrition\n• Create calm learning environments at home\n\n💡 **Parent Tips for Indian Families**\n• Celebrate small victories and progress milestones\n• Maintain patience and consistent support\n• Involve extended family in the therapy process\n• Use cultural activities and traditions as learning tools\n\n🌈 **Positive Highlights & Progress**\n${childData?.fullName || childName} continues to amaze us with their unique abilities and progress. Every therapy session brings new achievements and milestones.\n\n📈 **Development Milestones**\nRegular therapy sessions show consistent improvement in all targeted areas. Your child is progressing well within their individualized development plan.\n\n*Report Period: Analysis of ${childNotes.length} Recent Therapy Sessions*\n*Total Reports Analyzed: ${childNotes.length}*\n\n*With love from Aaryavart Centre for Autism and Special Needs* 💙\n\n**Note:** This is a demo report generated from ${childNotes.length} actual therapy notes. Configure VITE_DEEPSEEK_KEY_SECRET for AI-powered insights.`;
       setAiInsights(dummyInsights);
       generateReportContent(dummyInsights);
-      
       toast({
         title: "✅ Report Generated (Demo Mode)",
         description: `Report created from ${childNotes.length} therapy notes. Add DeepSeek API key for AI insights.`,
@@ -914,11 +945,12 @@ This report is based on the analysis of ${childNotes.length} therapy session not
         totalNotes: childNotes.length,
         sharedNotes: childNotes.filter(note => note.isSharedWithParent).length,
         aiInsights,
-        notes: childNotes.slice(0, 5).map(note => ({
+        // Always use up to 30 notes, and always use therapist name from API
+        notes: childNotes.slice(0, 30).map(note => ({
           title: note.title,
           text: note.text,
           date: new Date(note.createdAt).toLocaleDateString(),
-          author: `${note.createdBy.user.firstName} ${note.createdBy.user.lastName}`,
+          author: note.createdBy && note.createdBy.user ? `${note.createdBy.user.firstName} ${note.createdBy.user.lastName}` : '',
           tags: note.tags
         }))
       };
@@ -1335,6 +1367,18 @@ ${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'} Centre`;
 
           {/* Pull Report Button */}
           <div className="text-center">
+            <div className="mb-2 flex flex-col items-center justify-center">
+              <label className="text-sm font-medium text-gray-700 mb-1">Choose AI Provider</label>
+              <select
+                value={llmProvider}
+                onChange={e => setLlmProvider(e.target.value as 'deepskeek' | 'openai')}
+                className="border rounded px-3 py-1 text-base focus:outline-none focus:ring-2 focus:ring-blue-400"
+                style={{ minWidth: 180 }}
+              >
+                <option value="deepskeek">DeepSeek (default)</option>
+                <option value="openai">OpenAI GPT</option>
+              </select>
+            </div>
             <Button
               onClick={generateAIInsights}
               disabled={loading || generating}
@@ -1353,10 +1397,25 @@ ${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'} Centre`;
               )}
             </Button>
             <p className="text-sm text-gray-600 mt-2">
-              Fetches 30 reports and generates personalized insights using AI
+              Fetches 30 reports and generates personalized insights using your selected AI provider
             </p>
           </div>
           
+
+          {/* Raw LLM Insight Textarea */}
+          {aiInsights && (
+            <div className="mb-6">
+              <label className="block font-semibold text-gray-700 mb-2">Raw LLM Insight (editable before HTML generation)</label>
+              <textarea
+                className="w-full border rounded p-2 font-mono text-sm bg-gray-50 min-h-[120px]"
+                value={aiInsights}
+                onChange={e => setAiInsights(e.target.value)}
+                spellCheck={false}
+              />
+              <div className="text-xs text-gray-500 mt-1">You can edit the AI-generated insight here before previewing or downloading the HTML report.</div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           {reportContent && (
             <div className="flex gap-3 justify-center">
@@ -1368,7 +1427,6 @@ ${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'} Centre`;
                 <Eye className="h-4 w-4" />
                 Preview HTML
               </Button>
-              
               <Button
                 onClick={handleDownloadHTML}
                 variant="outline"
@@ -1377,7 +1435,6 @@ ${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'} Centre`;
                 <Download className="h-4 w-4" />
                 Download HTML
               </Button>
-              
               {(childData?.parent.contactNo || parentPhone) && (
                 <Button
                   onClick={sendWhatsApp}
