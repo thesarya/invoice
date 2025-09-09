@@ -10,6 +10,7 @@ import { Download, Trophy } from "lucide-react";
 import InvoiceStatsCards from '../components/InvoiceStatsCards';
 import InvoiceCharts from '../components/InvoiceCharts';
 import InvoiceTable from '../components/InvoiceTable';
+import ActiveParentsTable from '../components/ActiveParentsTable';
 import Navigation from "@/components/Navigation";
 import ChildSelectorDialog from '@/components/ChildSelectorDialog';
 
@@ -668,10 +669,11 @@ const Index = () => {
 
 
 
-        {/* Tabs for Invoices and Charts */}
+        {/* Tabs for Invoices, Active Parents, and Charts */}
         <Tabs defaultValue="invoices" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
+            <TabsTrigger value="parents">Active Parents</TabsTrigger>
             <TabsTrigger value="charts">Analytics & Charts</TabsTrigger>
           </TabsList>
           
@@ -688,6 +690,13 @@ const Index = () => {
               selectedInvoiceIds={selectedInvoiceIds}
               setSelectedInvoiceIds={setSelectedInvoiceIds}
               onBulkSend={handleBulkSend}
+            />
+          </TabsContent>
+          
+          <TabsContent value="parents" className="mt-6">
+            <ActiveParentsTable
+              centre={centre}
+              showConsolidated={showConsolidated}
             />
           </TabsContent>
           
