@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Users, RefreshCw } from "lucide-react";
 import ChildReportDialog from './ChildReportDialog';
+import { firebaseApiKeyManager } from "@/lib/firebase-api-key-manager";
 
 interface ChildSelectorDialogProps {
   centre: string;
@@ -36,9 +37,14 @@ const ChildSelectorDialog: React.FC<ChildSelectorDialogProps> = ({ centre, trigg
   
   const { toast } = useToast();
 
-  const tokens = {
-    gkp: import.meta.env.VITE_GKP_TOKEN || '',
-    lko: import.meta.env.VITE_LKO_TOKEN || ''
+  const getToken = (centre: string) => {
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      return centre === 'gkp' ? savedKeys.gkpToken : savedKeys.lkoToken;
+    } catch (error) {
+      console.error('Error getting token:', error);
+      return centre === 'gkp' ? import.meta.env.VITE_GKP_TOKEN : import.meta.env.VITE_LKO_TOKEN;
+    }
   };
 
   const API_BASE_URL = 'https://care.kidaura.in/api/graphql';
@@ -73,10 +79,12 @@ const ChildSelectorDialog: React.FC<ChildSelectorDialogProps> = ({ centre, trigg
         }
       `;
 
+      const token = getToken(centre);
+      
       const response = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${tokens[centre as keyof typeof tokens]}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -255,4 +263,4 @@ const ChildSelectorDialog: React.FC<ChildSelectorDialogProps> = ({ centre, trigg
   );
 };
 
-export default ChildSelectorDialog; 
+export default ChildSelectorDialog;

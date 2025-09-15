@@ -6,14 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Trophy } from "lucide-react";
+import { Download, Trophy, RefreshCw } from "lucide-react";
 import InvoiceStatsCards from '../components/InvoiceStatsCards';
-import InvoiceCharts from '../components/InvoiceCharts';
+import ImprovedAnalytics from '../components/ImprovedAnalytics';
 import InvoiceTable from '../components/InvoiceTable';
 import DeactiveChildrenTable from '../components/DeactiveChildrenTable';
 import Navigation from "@/components/Navigation";
 import ChildSelectorDialog from '@/components/ChildSelectorDialog';
+import StreamlinedControlPanel from '@/components/StreamlinedControlPanel';
+import RedundantDataProvider from '@/components/RedundantDataProvider';
+import FirestoreErrorHandler from '@/components/FirestoreErrorHandler';
 
+import { firebaseApiKeyManager } from "@/lib/firebase-api-key-manager";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Invoice {
   id: string;
@@ -47,6 +52,7 @@ interface YearlyRevenueData {
 }
 
 const Index = () => {
+  const { user, loading: authLoading } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [consolidatedInvoices, setConsolidatedInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,6 +66,7 @@ const Index = () => {
   const [yearlyRevenue, setYearlyRevenue] = useState<YearlyRevenueData[]>([]);
   const [activeUsers, setActiveUsers] = useState<{ activeChildren: number; activeMember: number } | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
+  const [isConfigured, setIsConfigured] = useState(false);
   const { toast } = useToast();
 
   const centres = {
@@ -67,14 +74,156 @@ const Index = () => {
     lko: 'Lucknow'
   };
 
-  const tokens = {
-    gkp: import.meta.env.VITE_GKP_TOKEN,
-    lko: import.meta.env.VITE_LKO_TOKEN
+  // Check if API keys are configured and get them
+  useEffect(() => {
+    if (!user || authLoading) return;
+    
+    const checkConfiguration = async () => {
+      try {
+        // Ensure keys are loaded first
+        await firebaseApiKeyManager.loadKeys();
+        const configured = firebaseApiKeyManager.isConfigured();
+        const keys = firebaseApiKeyManager.getKeys();
+        
+        setIsConfigured(configured);
+        console.log('API Configuration Status:', configured);
+        console.log('Saved Keys:', {
+          hasGkpToken: !!keys.gkpToken,
+          hasLkoToken: !!keys.lkoToken,
+          gkpTokenLength: keys.gkpToken?.length || 0,
+          lkoTokenLength: keys.lkoToken?.length || 0,
+          apiUrl: keys.apiUrl
+        });
+      } catch (error) {
+        console.error('Error checking API configuration:', error);
+        setIsConfigured(false);
+      }
+    };
+    checkConfiguration();
+  }, [user, authLoading]);
+
+  // Listen for storage changes (when settings are updated)
+  useEffect(() => {
+    if (!user || authLoading) return;
+    
+    const handleStorageChange = () => {
+      try {
+        const configured = firebaseApiKeyManager.isConfigured();
+        setIsConfigured(configured);
+        console.log('Settings updated, rechecking configuration:', configured);
+      } catch (error) {
+        console.error('Error checking configuration after storage change:', error);
+        setIsConfigured(false);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [user, authLoading]);
+
+  // Always try to use API key manager first, fallback to environment variables
+  const getTokens = () => {
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      console.log('Retrieved keys from manager:', {
+        hasGkpToken: !!savedKeys.gkpToken,
+        hasLkoToken: !!savedKeys.lkoToken,
+        gkpTokenLength: savedKeys.gkpToken?.length || 0,
+        lkoTokenLength: savedKeys.lkoToken?.length || 0
+      });
+      
+      if (savedKeys && savedKeys.gkpToken && savedKeys.lkoToken) {
+        console.log('Using saved API keys from settings');
+        return {
+          gkp: savedKeys.gkpToken,
+          lko: savedKeys.lkoToken
+        };
+      }
+    } catch (error) {
+      console.error('Error getting saved API keys:', error);
+    }
+    
+    console.log('Using environment variable API keys');
+    return {
+      gkp: import.meta.env.VITE_GKP_TOKEN,
+      lko: import.meta.env.VITE_LKO_TOKEN
+    };
   };
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://care.kidaura.in/api/graphql';
+  const getApiUrl = () => {
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      if (savedKeys && savedKeys.apiUrl) {
+        console.log('Using saved API URL from settings:', savedKeys.apiUrl);
+        return savedKeys.apiUrl;
+      }
+    } catch (error) {
+      console.error('Error getting saved API URL:', error);
+    }
+    
+    console.log('Using environment variable API URL');
+    return import.meta.env.VITE_API_BASE_URL || 'https://care.kidaura.in/api/graphql';
+  };
+
+  // Don't render until authentication is complete
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const tokens = getTokens();
+  const API_BASE_URL = getApiUrl();
 
   const fetchInvoices = async (fetchCentre = centre) => {
+    // Check if API keys are configured
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      console.log('fetchInvoices - Checking keys:', {
+        hasGkpToken: !!savedKeys.gkpToken,
+        hasLkoToken: !!savedKeys.lkoToken,
+        fetchCentre,
+        tokens: {
+          gkp: tokens.gkp ? 'Present' : 'Missing',
+          lko: tokens.lko ? 'Present' : 'Missing'
+        }
+      });
+      
+      // Check if the required token for the specific centre is available
+      const requiredToken = fetchCentre === 'gkp' ? savedKeys.gkpToken : savedKeys.lkoToken;
+      if (!requiredToken) {
+        console.log(`No ${fetchCentre.toUpperCase()} token found, showing toast`);
+        toast({
+          title: "API Token Required",
+          description: `Please add your ${fetchCentre.toUpperCase()} organization token in Settings and save it to continue`,
+          variant: "destructive",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/settings'}
+            >
+              Go to Settings
+            </Button>
+          ),
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking API keys:', error);
+      toast({
+        title: "Configuration Error",
+        description: "Unable to check API configuration. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     const paddedMonth = String(month).padStart(2, '0');
     const start = `${year}-${paddedMonth}-01T00:00:00.000Z`;
@@ -97,6 +246,14 @@ const Index = () => {
       }
     `;
 
+    console.log('Fetching invoices with:', {
+      fetchCentre,
+      API_BASE_URL,
+      token: tokens[fetchCentre as keyof typeof tokens] ? 'Present' : 'Missing',
+      start,
+      end
+    });
+
     try {
       const response = await fetch(`${API_BASE_URL}`, {
         method: 'POST',
@@ -110,8 +267,20 @@ const Index = () => {
         })
       });
 
+      console.log('API Response Status:', response.status);
+      
+      if (!response.ok) {
+        console.error('API Response Error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error Response Body:', errorText);
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
+      console.log('API Response Data:', data);
+      
       const fetchedInvoices = data?.data?.invoices || [];
+      console.log('Fetched Invoices Count:', fetchedInvoices.length);
       
       const invoicesWithCentre = fetchedInvoices.map((inv: Invoice) => ({
         ...inv,
@@ -121,6 +290,11 @@ const Index = () => {
       return invoicesWithCentre;
     } catch (error) {
       console.error(`Error fetching invoices for ${fetchCentre}:`, error);
+      toast({
+        title: "Error Fetching Data",
+        description: `Failed to fetch invoices for ${fetchCentre}. Check console for details.`,
+        variant: "destructive",
+      });
       return [];
     }
   };
@@ -133,7 +307,10 @@ const Index = () => {
         fetchInvoices('lko')
       ]);
 
-      const allInvoices = [...gkpInvoices, ...lkoInvoices];
+      // Ensure we always have arrays, never undefined
+      const safeGkpInvoices = gkpInvoices || [];
+      const safeLkoInvoices = lkoInvoices || [];
+      const allInvoices = [...safeGkpInvoices, ...safeLkoInvoices];
       setConsolidatedInvoices(allInvoices);
       
       toast({
@@ -141,6 +318,8 @@ const Index = () => {
         description: `Found ${allInvoices.length} invoices across both centres`,
       });
     } catch (error) {
+      // Set empty array on error to prevent undefined
+      setConsolidatedInvoices([]);
       toast({
         title: "Error",
         description: "Failed to fetch consolidated data",
@@ -169,13 +348,6 @@ const Index = () => {
         const monthName = new Date(year, m - 1).toLocaleString('default', { month: 'short' });
         const gkpRevenue = gkpData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
         const lkoRevenue = lkoData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
-        
-        // Debug logging
-        console.log(`Month ${m} (${monthName}):`, {
-          gkp: { count: gkpData.length, revenue: gkpRevenue },
-          lko: { count: lkoData.length, revenue: lkoRevenue },
-          dateRange: { start, end }
-        });
         
         monthlyData.push({
           month: monthName,
@@ -214,11 +386,6 @@ const Index = () => {
         const gkpRevenue = gkpData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
         const lkoRevenue = lkoData.reduce((sum: number, inv: Invoice) => sum + (inv.total || 0), 0);
 
-        console.log(`Year ${yearToFetch}:`, {
-          gkp: { count: gkpData.length, revenue: gkpRevenue },
-          lko: { count: lkoData.length, revenue: lkoRevenue }
-        });
-
         yearlyData.push({
           year: yearToFetch,
           gkp: gkpRevenue,
@@ -239,6 +406,31 @@ const Index = () => {
   };
 
   const fetchMonthData = async (fetchCentre: string, start: string, end: string) => {
+    // Check if API keys are configured
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      if (!savedKeys.gkpToken && !savedKeys.lkoToken) {
+        toast({
+          title: "API Keys Required",
+          description: "Please add your organization tokens in Settings and save them to continue",
+          variant: "destructive",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/settings'}
+            >
+              Go to Settings
+            </Button>
+          ),
+        });
+        return [];
+      }
+    } catch (error) {
+      console.error('Error checking API keys in fetchMonthData:', error);
+      return [];
+    }
+
     const query = `
       query Invoices($startDate: DateTime, $endDate: DateTime, $childId: ID, $status: [InvoiceStatus], $paymentMode: PaymentMode) {
         invoices(
@@ -278,13 +470,16 @@ const Index = () => {
     setLoading(true);
     try {
       const fetchedInvoices = await fetchInvoices();
-      setInvoices(fetchedInvoices);
+      // Ensure we always set an array, never undefined
+      setInvoices(fetchedInvoices || []);
       
       toast({
         title: "Data Fetched Successfully",
-        description: `Found ${fetchedInvoices.length} invoices for ${centres[centre as keyof typeof centres]} in ${month}/${year}`,
+        description: `Found ${(fetchedInvoices || []).length} invoices for ${centres[centre as keyof typeof centres]} in ${month}/${year}`,
       });
     } catch (error) {
+      // Set empty array on error to prevent undefined
+      setInvoices([]);
       toast({
         title: "Error",
         description: "Failed to fetch invoice data",
@@ -296,6 +491,31 @@ const Index = () => {
   };
 
   const fetchActiveUsers = async (fetchCentre = centre) => {
+    // Check if API keys are configured
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      if (!savedKeys.gkpToken && !savedKeys.lkoToken) {
+        toast({
+          title: "API Keys Required",
+          description: "Please add your organization tokens in Settings and save them to continue",
+          variant: "destructive",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/settings'}
+            >
+              Go to Settings
+            </Button>
+          ),
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking API keys in fetchActiveUsers:', error);
+      return;
+    }
+
     const query = `
       query totalActiveUsers {
         childrenCount {
@@ -369,7 +589,7 @@ const Index = () => {
     } else {
       loadSingleCentreData();
     }
-  }, [year, month, centre, showConsolidated]);
+  }, [year, month, centre, showConsolidated, isConfigured]);
 
   useEffect(() => {
     fetchMonthlyRevenue();
@@ -385,7 +605,8 @@ const Index = () => {
 
   const currentInvoices = showConsolidated ? consolidatedInvoices : invoices;
 
-  const filteredInvoices = currentInvoices.filter(invoice => {
+  // Add null check to prevent filter error
+  const filteredInvoices = (currentInvoices || []).filter(invoice => {
     const matchesSearch = invoice.child?.fullNameWithCaseId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.invoiceNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.child?.fatherName?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -454,7 +675,7 @@ const Index = () => {
     year: yearData.year,
     gkp: yearData.gkp || 0,
     lko: yearData.lko || 0,
-    revenue: yearData.total || 0
+    total: yearData.total || 0
   }));
 
   // Calculate customer insights
@@ -478,8 +699,8 @@ const Index = () => {
     // Use consolidated invoices for customer insights (full year data)
     const allInvoices = showConsolidated ? consolidatedInvoices : filteredInvoices;
     
-    // Group invoices by customer
-    allInvoices.forEach(invoice => {
+    // Group invoices by customer - add null check
+    (allInvoices || []).forEach(invoice => {
       const customerKey = `${invoice.child?.fullNameWithCaseId || 'Unknown'}_${invoice.centre}`;
       const existing = customerMap.get(customerKey);
       
@@ -545,14 +766,6 @@ const Index = () => {
   };
 
   const { latePayingCustomers } = calculateCustomerInsights();
-  
-  // Debug logging for customer insights
-  console.log('Customer Insights Debug:', {
-    totalInvoices: filteredInvoices.length,
-    consolidatedInvoices: consolidatedInvoices.length,
-    showConsolidated,
-    latePayingCount: latePayingCustomers.length
-  });
 
   const selectedCentre = centre === 'gkp' ? 'GKP' : 'Lucknow';
   const handleCentreChange = (newCentre: 'GKP' | 'Lucknow') => {
@@ -560,8 +773,24 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <Navigation selectedCentre={selectedCentre} onCentreChange={handleCentreChange} />
+    <RedundantDataProvider 
+      onConnectionError={(error) => {
+        console.error('Connection error detected:', error);
+        toast({
+          title: "Connection Issue",
+          description: "Firestore connection failed. Using fallback data.",
+          variant: "destructive",
+        });
+      }}
+      fallbackData={{
+        invoices: invoices || [],
+        consolidatedInvoices: consolidatedInvoices || [],
+        activeUsers: activeUsers || { activeChildren: 0, activeMember: 0 },
+        stats: { totalRevenue, totalInvoices, paidInvoices, pendingInvoices }
+      }}
+    >
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <Navigation selectedCentre={selectedCentre} onCentreChange={handleCentreChange} />
       
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
@@ -575,85 +804,58 @@ const Index = () => {
             </p>
           </div>
           
-          {/* Header Actions */}
-          <div className="flex flex-wrap gap-3 items-center">
+          {/* Quick Action */}
+          <div className="flex items-center gap-3">
             <ChildSelectorDialog
               centre={centre}
               trigger={
                 <Button variant="outline" className="flex items-center gap-2">
                   <Trophy className="h-4 w-4" />
-                  Generate Any Child Report
+                  Generate Report
                 </Button>
               }
             />
-            
-            
-            {/* Export Button */}
-            <Button onClick={exportData} variant="outline" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Export Invoice Data
-            </Button>
-            
-            <Checkbox
-              id="consolidated"
-              checked={showConsolidated}
-              onCheckedChange={(checked) => setShowConsolidated(checked === true)}
-            />
-            <label htmlFor="consolidated" className="text-sm font-medium">
-              Show Consolidated Data
-            </label>
-            
-            {!showConsolidated && (
-              <Select value={centre} onValueChange={setCentre}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="gkp">Gorakhpur</SelectItem>
-                  <SelectItem value="lko">Lucknow</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-            
-            <Input
-              type="number"
-              placeholder="Year"
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className="w-24"
-              min="2020"
-              max="2030"
-            />
-            
-            <Input
-              type="number"
-              placeholder="Month"
-              value={month}
-              onChange={(e) => setMonth(Number(e.target.value))}
-              className="w-24"
-              min="1"
-              max="12"
-            />
-            
-            <Button onClick={showConsolidated ? fetchConsolidatedData : loadSingleCentreData} disabled={loading} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              {loading ? 'Loading...' : 'Refresh Data'}
-            </Button>
           </div>
         </div>
 
-        {/* Active Users */}
-        {activeUsers && (
-          <div style={{ marginBottom: 16 }}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Users This Month</CardTitle>
-                <CardDescription>
-                  Active Children: {activeUsers.activeChildren} | Active Members: {activeUsers.activeMember}
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        )}
+        {/* Streamlined Control Panel */}
+        <div className="mb-6">
+          <StreamlinedControlPanel
+            showConsolidated={showConsolidated}
+            setShowConsolidated={setShowConsolidated}
+            centre={centre}
+            setCentre={setCentre}
+            year={year}
+            setYear={setYear}
+            month={month}
+            setMonth={setMonth}
+            onRefreshData={showConsolidated ? fetchConsolidatedData : loadSingleCentreData}
+            onExportData={exportData}
+            onReloadConfig={() => {
+              try {
+                const configured = firebaseApiKeyManager.isConfigured();
+                setIsConfigured(configured);
+                console.log('Manually reloaded configuration:', configured);
+                toast({
+                  title: "Configuration Reloaded",
+                  description: `API keys ${configured ? 'found' : 'not found'}. ${configured ? 'You can now fetch data.' : 'Please configure API keys in Settings.'}`,
+                });
+              } catch (error) {
+                console.error('Error reloading configuration:', error);
+                toast({
+                  title: "Configuration Error",
+                  description: "Unable to reload configuration. Please try again.",
+                  variant: "destructive",
+                });
+              }
+            }}
+            loading={loading}
+            isConfigured={isConfigured}
+            totalInvoices={totalInvoices}
+            totalRevenue={totalRevenue}
+            activeUsers={activeUsers}
+          />
+        </div>
 
         {/* Stats Cards */}
         <InvoiceStatsCards
@@ -667,8 +869,6 @@ const Index = () => {
           centres={centres}
           centre={centre}
         />
-
-
 
         {/* Tabs for Active Students, Deactive Children, and Charts */}
         <Tabs defaultValue="active-students" className="w-full">
@@ -702,18 +902,51 @@ const Index = () => {
           </TabsContent>
           
           <TabsContent value="charts" className="mt-6">
-            <InvoiceCharts
+            <ImprovedAnalytics
               revenueByDay={revenueByDay}
               statusData={statusData}
               monthlyRevenue={monthlyRevenueForChart}
               quarterlyRevenue={quarterlyRevenue}
               yearlyRevenue={yearlyRevenueForChart}
               latePayingCustomers={latePayingCustomers}
+              totalRevenue={totalRevenue}
+              totalInvoices={totalInvoices}
+              paidInvoices={paidInvoices}
+              pendingInvoices={pendingInvoices}
+              activeUsers={activeUsers}
+              centre={centre}
+              showConsolidated={showConsolidated}
             />
           </TabsContent>
+
+
         </Tabs>
       </div>
-    </div>
+        
+        {/* Firestore Error Handler for Listen channel errors */}
+        <FirestoreErrorHandler 
+          onRetry={() => {
+            // Retry data fetching operations
+            if (showConsolidated) {
+              fetchConsolidatedData();
+            } else {
+              loadSingleCentreData();
+            }
+            fetchActiveUsers();
+          }}
+          onFallbackMode={(enabled) => {
+            if (enabled) {
+              console.log('Fallback mode enabled - using cached data');
+              toast({
+                title: "Offline Mode",
+                description: "Using cached data due to connection issues",
+                variant: "default",
+              });
+            }
+          }}
+        />
+      </div>
+    </RedundantDataProvider>
   );
 };
 

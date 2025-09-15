@@ -7,17 +7,23 @@ import { Phone, Users, Building2, RefreshCw, MessageCircle, CheckCircle, AlertTr
 import { useToast } from "@/hooks/use-toast";
 import BulkWhatsAppReminderDialog from './BulkWhatsAppReminderDialog';
 import AisensyTestDialog from './AisensyTestDialog';
+import WhatsAppNotificationSystem from './WhatsAppNotificationSystem';
+import { firebaseApiKeyManager } from "@/lib/firebase-api-key-manager";
 
 interface Child {
   id: string;
   fullNameWithCaseId: string;
-  fatherName: string;
-  phone: string;
-  email?: string;
+  fullName: string;
+  deactivated: boolean;
+  deactivationTime?: string;
   centre: string;
-  isActive: boolean;
-  lastActivityDate?: string;
-  deactivationReason?: string;
+  parent: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    contactNo: string;
+    primaryEmail?: string;
+  }[];
 }
 
 interface DeactiveChildrenTableProps {
@@ -40,66 +46,152 @@ const DeactiveChildrenTable: React.FC<DeactiveChildrenTableProps> = ({
     lko: 'Lucknow'
   };
 
-  const tokens = {
-    gkp: import.meta.env.VITE_GKP_TOKEN,
-    lko: import.meta.env.VITE_LKO_TOKEN
+  // Get tokens from API key manager
+  const getTokens = () => {
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      return {
+        gkp: savedKeys.gkpToken || import.meta.env.VITE_GKP_TOKEN,
+        lko: savedKeys.lkoToken || import.meta.env.VITE_LKO_TOKEN
+      };
+    } catch (error) {
+      console.error('Error getting tokens:', error);
+      return {
+        gkp: import.meta.env.VITE_GKP_TOKEN,
+        lko: import.meta.env.VITE_LKO_TOKEN
+      };
+    }
   };
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://care.kidaura.in/api/graphql';
+  const getApiUrl = () => {
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      return savedKeys.apiUrl || import.meta.env.VITE_API_BASE_URL || 'https://care.kidaura.in/api/graphql';
+    } catch (error) {
+      return import.meta.env.VITE_API_BASE_URL || 'https://care.kidaura.in/api/graphql';
+    }
+  };
+
+  const tokens = getTokens();
+  const API_BASE_URL = getApiUrl();
 
   const fetchDeactiveChildren = async (fetchCentre = selectedCentre) => {
     setLoading(true);
     try {
-      // Get current year and month for the query
-      const currentDate = new Date();
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth() + 1;
-      const paddedMonth = String(month).padStart(2, '0');
-      const start = `${year}-${paddedMonth}-01T00:00:00.000Z`;
-      const end = month < 12
-        ? `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00.000Z`
-        : `${year + 1}-01-01T00:00:00.000Z`;
+      // Get the token for the specific centre
+      const currentTokens = getTokens();
+      const requiredToken = currentTokens[fetchCentre as keyof typeof currentTokens];
+      
+      if (!requiredToken) {
+        console.log(`No ${fetchCentre.toUpperCase()} token found for deactive children`);
+        toast({
+          title: "API Token Required",
+          description: `Please add your ${fetchCentre.toUpperCase()} organization token in Settings and save it to continue`,
+          variant: "destructive",
+        });
+        return [];
+      }
+      
+      console.log(`Fetching deactive children for ${fetchCentre} with token: ${requiredToken.substring(0, 10)}...`);
 
-      // Query to get all children and filter for inactive ones
+      // Query to get all children using allChildrenPaginated
       const query = `
-        query Children($startDate: DateTime, $endDate: DateTime) {
-          children(
-            startDate: $startDate
-            endDate: $endDate
+        query allChildrenPaginated($search: String, $filter: childrenFilterInput, $offset: Int, $limit: Int) {
+          allChildrenPaginated(
+            searchQuery: $search
+            filter: $filter
+            offset: $offset
+            limit: $limit
           ) {
-            id
-            fullNameWithCaseId
-            fatherName
-            phone
-            email
-            isActive
-            lastActivityDate
-            deactivationReason
+            children {
+              id
+              fullNameWithCaseId
+              fullName
+              deactivated
+              deactivationTime
+              parent {
+                id
+                firstName
+                lastName
+                contactNo
+                primaryEmail
+              }
+            }
+            hasMore
+            offset
           }
         }
       `;
 
+      console.log('Fetching all children to filter for deactivated ones...');
+
       const response = await fetch(`${API_BASE_URL}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${tokens[fetchCentre as keyof typeof tokens]}`,
+          'Authorization': `Bearer ${requiredToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           query,
-          variables: { startDate: start, endDate: end }
+          variables: {
+            search: "",
+            offset: 0,
+            limit: 100,
+            filter: {
+              conditions: [],
+              therapy: []
+            }
+          }
         })
       });
 
-      const data = await response.json();
-      const allChildren = data?.data?.children || [];
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`HTTP ${response.status} error for ${fetchCentre}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText,
+          requestUrl: API_BASE_URL,
+          requestHeaders: {
+            'Authorization': `Bearer ${requiredToken.substring(0, 10)}...`,
+            'Content-Type': 'application/json'
+          },
+          requestBody: JSON.stringify({ query })
+        });
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
 
-      // Filter for inactive children and add centre information
+      const data = await response.json();
+      
+      if (data.errors) {
+        console.error('GraphQL errors:', data.errors);
+        throw new Error(`GraphQL error: ${data.errors[0]?.message || 'Unknown error'}`);
+      }
+      
+      const allChildren = data?.data?.allChildrenPaginated?.children || [];
+      console.log(`Found ${allChildren.length} total children for ${fetchCentre}`);
+      
+      // Log active/inactive breakdown
+      const activeCount = allChildren.filter((child: any) => !child.deactivated).length;
+      const inactiveCount = allChildren.filter((child: any) => child.deactivated).length;
+      console.log(`Active children: ${activeCount}, Deactivated children: ${inactiveCount}`);
+      
+      // Log some sample data for debugging
+      if (allChildren.length > 0) {
+        console.log('Sample child data:', {
+          first: allChildren[0],
+          activeStatus: allChildren.map((c: any) => ({ id: c.id, name: c.fullNameWithCaseId, deactivated: c.deactivated })).slice(0, 5)
+        });
+      }
+
+      // Filter for deactivated children and add centre information
       const deactiveChildren = allChildren
-        .filter((child: any) => !child.isActive)
+        .filter((child: any) => child.deactivated)
         .map((child: any) => ({
           ...child,
-          centre: fetchCentre
+          centre: fetchCentre,
+          // Ensure parent is always an array
+          parent: Array.isArray(child.parent) ? child.parent : [child.parent]
         }));
 
       return deactiveChildren;
@@ -118,6 +210,7 @@ const DeactiveChildrenTable: React.FC<DeactiveChildrenTableProps> = ({
       ]);
 
       const allChildren = [...gkpChildren, ...lkoChildren];
+      console.log(`Consolidated data: GKP=${gkpChildren.length}, LKO=${lkoChildren.length}, Total=${allChildren.length}`);
       setChildren(allChildren);
       
       toast({
@@ -139,6 +232,7 @@ const DeactiveChildrenTable: React.FC<DeactiveChildrenTableProps> = ({
     setLoading(true);
     try {
       const fetchedChildren = await fetchDeactiveChildren();
+      console.log(`Single centre data for ${selectedCentre}: ${fetchedChildren.length} deactive children`);
       setChildren(fetchedChildren);
       
       toast({
@@ -218,13 +312,13 @@ const DeactiveChildrenTable: React.FC<DeactiveChildrenTableProps> = ({
             <BulkWhatsAppReminderDialog
               selectedParents={selectedChildren.map(child => ({
                 id: child.id,
-                name: child.fatherName,
-                phone: child.phone,
-                email: child.email,
+                name: `${child.parent[0]?.firstName || ''} ${child.parent[0]?.lastName || ''}`,
+                phone: child.parent[0]?.contactNo || '',
+                email: child.parent[0]?.primaryEmail,
                 children: [{
                   id: child.id,
                   fullNameWithCaseId: child.fullNameWithCaseId,
-                  isActive: child.isActive
+                  isActive: !child.deactivated
                 }],
                 centre: child.centre
               }))}
@@ -238,10 +332,32 @@ const DeactiveChildrenTable: React.FC<DeactiveChildrenTableProps> = ({
                   }`}
                 >
                   <MessageCircle className="h-4 w-4" />
-                  Send Reactivation Reminders ({selectedChildIds.length})
+                  Bulk Fee Reminder ({selectedChildIds.length})
                 </Button>
               }
             />
+            
+            <Button 
+              disabled={selectedChildIds.length === 0}
+              className={`flex items-center gap-2 ${
+                selectedChildIds.length === 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white'
+              }`}
+              onClick={() => {
+                // Handle bulk notification for selected children
+                selectedChildren.forEach(child => {
+                  // Open WhatsApp notification for each selected child
+                  const phone = child.parent[0]?.contactNo || '';
+                  const message = `Dear ${child.parent[0]?.firstName || 'Parent'}, this is a notification regarding ${child.fullNameWithCaseId}.`;
+                  const whatsappUrl = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
+                  window.open(whatsappUrl, '_blank');
+                });
+              }}
+            >
+              <MessageCircle className="h-4 w-4" />
+              Bulk Notification ({selectedChildIds.length})
+            </Button>
             
             <AisensyTestDialog
               trigger={
@@ -359,21 +475,23 @@ const DeactiveChildrenTable: React.FC<DeactiveChildrenTableProps> = ({
                   </td>
                   <td className="py-3 px-4">
                     <div>
-                      <span className="font-medium text-gray-900 block">{child.fatherName}</span>
+                      <span className="font-medium text-gray-900 block">{child.parent[0]?.firstName || ''} {child.parent[0]?.lastName || ''}</span>
                       <span className="text-xs text-gray-500">Parent</span>
                     </div>
                   </td>
                   <td className="py-3 px-4">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-gray-400" />
-                        <span className="font-mono text-sm text-gray-700">
-                          {formatPhone(child.phone)}
-                        </span>
-                      </div>
-                      {child.email && (
+                      {child.parent.map((parent, parentIndex) => (
+                        <div key={parent.id || parentIndex} className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          <span className="font-mono text-sm text-gray-700">
+                            {formatPhone(parent.contactNo || '')}
+                          </span>
+                        </div>
+                      ))}
+                      {child.parent[0]?.primaryEmail && (
                         <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
-                          {child.email}
+                          {child.parent[0].primaryEmail}
                         </div>
                       )}
                     </div>
@@ -393,44 +511,33 @@ const DeactiveChildrenTable: React.FC<DeactiveChildrenTableProps> = ({
                     </td>
                   )}
                   <td className="py-3 px-4">
-                    {child.lastActivityDate ? (
+                    {child.deactivationTime ? (
                       <span className="text-sm text-gray-600">
-                        {new Date(child.lastActivityDate).toLocaleDateString()}
+                        {new Date(child.deactivationTime).toLocaleDateString()}
                       </span>
                     ) : (
                       <span className="text-sm text-gray-400 italic">Unknown</span>
                     )}
                   </td>
                   <td className="py-3 px-4">
-                    {child.deactivationReason ? (
-                      <Badge className="bg-red-100 text-red-800 text-xs">
-                        {child.deactivationReason}
-                      </Badge>
-                    ) : (
-                      <span className="text-sm text-gray-400 italic">Not specified</span>
-                    )}
+                    <Badge className="bg-red-100 text-red-800 text-xs">
+                      Deactivated
+                    </Badge>
                   </td>
                   <td className="py-3 px-4">
-                    <BulkWhatsAppReminderDialog
-                      selectedParents={[{
-                        id: child.id,
-                        name: child.fatherName,
-                        phone: child.phone,
-                        email: child.email,
-                        children: [{
-                          id: child.id,
-                          fullNameWithCaseId: child.fullNameWithCaseId,
-                          isActive: child.isActive
-                        }],
-                        centre: child.centre
-                      }]}
+                    <WhatsAppNotificationSystem
+                      defaultPhone={child.parent[0]?.contactNo || ''}
+                      studentName={child.fullNameWithCaseId}
+                      parentName={`${child.parent[0]?.firstName || ''} ${child.parent[0]?.lastName || ''}`}
+                      isActive={false}
+                      centre={centres[child.centre as keyof typeof centres] || child.centre}
                       trigger={
                         <button 
                           className="px-2 py-1 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 text-xs flex items-center gap-1"
-                          title="Send reactivation reminder"
+                          title="Send notification to inactive student"
                         >
                           <MessageCircle className="h-3 w-3" />
-                          Send Reminder
+                          Send Notification
                         </button>
                       }
                     />

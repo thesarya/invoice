@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, RefreshCw, Eye, Send, Download, MessageCircle } from "lucide-react";
 import { generateHTMLReport, HTMLReportData } from "@/lib/html-report-generator";
+import { firebaseApiKeyManager } from "@/lib/firebase-api-key-manager";
 
 interface Invoice {
   id: string;
@@ -56,9 +57,15 @@ const BulkReportDialog: React.FC<BulkReportDialogProps> = ({ selectedInvoices, o
   // Get environment variables
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://care.kidaura.in/api/graphql';
   const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_KEY_SECRET || 'sk-test-dummy-key-for-testing';
-  const tokens = {
-    gkp: import.meta.env.VITE_GKP_TOKEN,
-    lucknow: import.meta.env.VITE_LKO_TOKEN
+
+  const getToken = (centre: string) => {
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      return centre === 'gkp' ? savedKeys.gkpToken : savedKeys.lkoToken;
+    } catch (error) {
+      console.error('Error getting token:', error);
+      return centre === 'gkp' ? import.meta.env.VITE_GKP_TOKEN : import.meta.env.VITE_LKO_TOKEN;
+    }
   };
 
   const generateBulkReports = async () => {
@@ -76,7 +83,7 @@ const BulkReportDialog: React.FC<BulkReportDialogProps> = ({ selectedInvoices, o
         try {
           const childId = invoice.child?.fullNameWithCaseId || 'test-child-id';
           const centre = invoice.centre || 'gkp';
-          const token = tokens[centre as keyof typeof tokens];
+          const token = getToken(centre);
 
           // Step 1: Find actual child ID
           let resolvedChildId = childId;
@@ -600,4 +607,4 @@ With gratitude & pride,
   );
 };
 
-export default BulkReportDialog; 
+export default BulkReportDialog;

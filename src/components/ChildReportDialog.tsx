@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Download, MessageCircle, Brain, Eye, RefreshCw } from "lucide-react";
 import { downloadHTMLReport, generateHTMLReport, HTMLReportData } from "@/lib/html-report-generator";
+import { aiService, AIProvider } from '@/lib/ai-service';
+import { firebaseApiKeyManager } from "@/lib/firebase-api-key-manager";
 
 interface ChildNote {
   id: string;
@@ -179,7 +181,8 @@ const ChildReportDialog: React.FC<ChildReportDialogProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   // LLM provider selection: 'deepskeek' or 'openai'
-  const [llmProvider, setLlmProvider] = useState<'deepskeek' | 'openai'>('deepskeek');
+  const [llmProvider, setLlmProvider] = useState<'gemini' | 'deepseek'>('deepseek');
+  const [availableProviders, setAvailableProviders] = useState<AIProvider[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [childNotes, setChildNotes] = useState<ChildNote[]>([]);
@@ -191,9 +194,19 @@ const ChildReportDialog: React.FC<ChildReportDialogProps> = ({
 
   const { toast } = useToast();
 
+  const getToken = (centre: string) => {
+    try {
+      const savedKeys = firebaseApiKeyManager.getKeys();
+      return centre === 'gkp' ? savedKeys.gkpToken : savedKeys.lkoToken;
+    } catch (error) {
+      console.error('Error getting token:', error);
+      return centre === 'gkp' ? import.meta.env.VITE_GKP_TOKEN : import.meta.env.VITE_LKO_TOKEN;
+    }
+  };
+
   const tokens = {
-    gkp: import.meta.env.VITE_GKP_TOKEN || '',
-    lko: import.meta.env.VITE_LKO_TOKEN || ''
+    gkp: getToken('gkp') || '',
+    lko: getToken('lko') || ''
   };
 
   const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_KEY_SECRET || 'sk-test-dummy-key-for-testing';
@@ -203,6 +216,15 @@ const ChildReportDialog: React.FC<ChildReportDialogProps> = ({
   useEffect(() => {
     if (open) {
       fetchChildData();
+      // Load available AI providers
+      const providers = aiService.getAvailableProviders();
+      setAvailableProviders(providers);
+      
+      // Set best available provider as default
+      const bestProvider = aiService.getBestProvider();
+      if (bestProvider) {
+        setLlmProvider(bestProvider.name);
+      }
     }
   }, [open]);
 
@@ -550,8 +572,27 @@ const ChildReportDialog: React.FC<ChildReportDialogProps> = ({
       return;
     }
 
+    // Check if any AI service is configured
+    if (!aiService.isAnyConfigured()) {
+      toast({
+        title: "AI Service Required",
+        description: "Please add Gemini or DeepSeek API key in Settings to generate AI insights.",
+        variant: "destructive",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.href = '/settings'}
+          >
+            Go to Settings
+          </Button>
+        ),
+      });
+      return;
+    }
+
     // Provider selection logic
-    if (llmProvider === 'openai') {
+    if (llmProvider === 'gemini') {
       if (!OPENAI_API_KEY) {
         toast({
           title: "❌ OpenAI API Key Missing",
@@ -1371,12 +1412,12 @@ ${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'} Centre`;
               <label className="text-sm font-medium text-gray-700 mb-1">Choose AI Provider</label>
               <select
                 value={llmProvider}
-                onChange={e => setLlmProvider(e.target.value as 'deepskeek' | 'openai')}
+                onChange={e => setLlmProvider(e.target.value as 'gemini' | 'deepseek')}
                 className="border rounded px-3 py-1 text-base focus:outline-none focus:ring-2 focus:ring-blue-400"
                 style={{ minWidth: 180 }}
               >
-                <option value="deepskeek">DeepSeek (default)</option>
-                <option value="openai">OpenAI GPT</option>
+                <option value="deepseek">DeepSeek (default)</option>
+                <option value="gemini">Gemini</option>
               </select>
             </div>
             <Button
@@ -1600,4 +1641,4 @@ ${centre === 'gkp' ? 'Gorakhpur' : 'Lucknow'} Centre`;
   );
 };
 
-export default ChildReportDialog; 
+export default ChildReportDialog;

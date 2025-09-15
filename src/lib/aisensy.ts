@@ -36,47 +36,76 @@ class AisensyService {
 
   constructor() {
     this.config = {
-      apiKey: import.meta.env.VITE_AISENSY_API_KEY || '',
+      apiKey: '',
       baseUrl: import.meta.env.VITE_AISENSY_BASE_URL || 'https://backend.aisensy.com/campaign/t1/api',
       templateId: import.meta.env.VITE_AISENSY_TEMPLATE_ID || 'payment_reminder_template',
       templateName: import.meta.env.VITE_AISENSY_TEMPLATE_NAME || 'fees_payment_remind'
     };
 
+    this.loadConfig();
+  }
+
+  private async loadConfig() {
+    try {
+      const { firebaseApiKeyManager } = await import('./firebase-api-key-manager');
+      this.config.apiKey = firebaseApiKeyManager.getAisensyKey() || import.meta.env.VITE_AISENSY_API_KEY || '';
+    } catch (error) {
+      this.config.apiKey = import.meta.env.VITE_AISENSY_API_KEY || '';
+    }
+
     if (!this.config.apiKey) {
       console.warn('Aisensy API key not configured. WhatsApp reminders will use fallback mode.');
-      console.warn('Please set VITE_AISENSY_API_KEY in your .env file to use Aisensy API.');
-      console.warn('Current VITE_AISENSY_API_KEY value:', import.meta.env.VITE_AISENSY_API_KEY ? 'Set' : 'Not set');
-      console.warn('Environment variables available:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_AISENSY')));
-      console.warn('All environment variables:', Object.keys(import.meta.env));
     } else {
       console.log('Aisensy API key is configured and ready to use.');
-      console.log('API Key (first 20 chars):', this.config.apiKey.substring(0, 20) + '...');
     }
   }
 
   /**
    * Check if Aisensy is properly configured
    */
-  isConfigured(): boolean {
-    return !!this.config.apiKey;
+  async isConfigured(): Promise<boolean> {
+    try {
+      const { firebaseApiKeyManager } = await import('./firebase-api-key-manager');
+      const apiKey = firebaseApiKeyManager.getAisensyKey();
+      console.log('Aisensy isConfigured check:', { apiKey: apiKey ? `${apiKey.substring(0, 20)}...` : 'empty' });
+      return !!apiKey;
+    } catch (error) {
+      console.log('Aisensy isConfigured fallback to env var:', { hasEnvKey: !!this.config.apiKey });
+      return !!this.config.apiKey;
+    }
+  }
+
+  /**
+   * Synchronous version of isConfigured for immediate checks
+   */
+  isConfiguredSync(): boolean {
+    try {
+      const { firebaseApiKeyManager } = require('./firebase-api-key-manager');
+      const apiKey = firebaseApiKeyManager.getAisensyKey();
+      console.log('Aisensy isConfiguredSync check:', { apiKey: apiKey ? `${apiKey.substring(0, 20)}...` : 'empty' });
+      return !!apiKey;
+    } catch (error) {
+      console.log('Aisensy isConfiguredSync fallback to env var:', { hasEnvKey: !!this.config.apiKey });
+      return !!this.config.apiKey;
+    }
   }
 
   /**
    * Test Aisensy API connection
    */
   async testAisensyConnection(): Promise<boolean> {
-    if (!this.isConfigured()) {
-      console.error('Aisensy not configured - cannot test connection');
+    console.log('Starting Aisensy connection test...');
+    
+    const isConfigured = await this.isConfigured();
+    if (!isConfigured) {
+      console.error('Aisensy API key not configured');
       return false;
     }
 
     try {
-      console.log('Testing Aisensy API connection...');
-      console.log('Base URL:', this.config.baseUrl);
-      console.log('Template Name:', this.config.templateName);
-      
-      // Try to fetch templates to test the connection
-      const response = await fetch(`${this.config.baseUrl}/templates`, {
+      console.log('Making request to Aisensy API:', `${this.config.baseUrl}/template`);
+      const response = await fetch(`${this.config.baseUrl}/template`, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${this.config.apiKey}`,
           'Content-Type': 'application/json'
@@ -84,19 +113,18 @@ class AisensyService {
       });
 
       console.log('Aisensy test response status:', response.status);
-      
+      const data = await response.json();
+      console.log('Aisensy test response data:', data);
+
       if (response.ok) {
-        const data = await response.json();
-        console.log('Aisensy API connection successful');
-        console.log('Available templates:', data);
+        console.log('Aisensy connection test successful!');
         return true;
       } else {
-        const errorData = await response.json();
-        console.error('Aisensy API test failed:', errorData);
+        console.error('Aisensy API returned error:', response.status, data);
         return false;
       }
     } catch (error) {
-      console.error('Aisensy API test error:', error);
+      console.error('Aisensy connection test failed with error:', error);
       return false;
     }
   }
@@ -178,7 +206,16 @@ class AisensyService {
    * Send WhatsApp message using Aisensy API
    */
   async sendWhatsAppMessage(message: WhatsAppMessage): Promise<AisensyResponse> {
-    if (!this.config.apiKey) {
+    // Get API key dynamically
+    let apiKey = this.config.apiKey;
+    try {
+      const { firebaseApiKeyManager } = await import('./firebase-api-key-manager');
+      apiKey = firebaseApiKeyManager.getAisensyKey() || this.config.apiKey;
+    } catch (error) {
+      // Use fallback
+    }
+
+    if (!apiKey) {
       throw new Error('Aisensy API key not configured');
     }
 
@@ -190,7 +227,7 @@ class AisensyService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.apiKey}`
+          'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
           phone: message.phone,

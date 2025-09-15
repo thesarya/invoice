@@ -62,19 +62,38 @@ class RazorpayService {
   private keySecret: string;
 
   constructor() {
-    this.keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
-    this.keySecret = import.meta.env.VITE_RAZORPAY_KEY_SECRET || '';
-    
     // Always use proxy to avoid CORS issues
     this.baseUrl = '/api/razorpay';
     
-    if (!this.keyId || !this.keySecret) {
-      console.warn('Razorpay API keys not found in environment variables');
+    // Keys will be loaded dynamically when needed
+    this.keyId = '';
+    this.keySecret = '';
+  }
+
+  private async getKeys() {
+    try {
+      const { firebaseApiKeyManager } = await import('./firebase-api-key-manager');
+      return {
+        keyId: firebaseApiKeyManager.getRazorpayKeyId() || import.meta.env.VITE_RAZORPAY_KEY_ID || '',
+        keySecret: firebaseApiKeyManager.getRazorpayKeySecret() || import.meta.env.VITE_RAZORPAY_KEY_SECRET || ''
+      };
+    } catch (error) {
+      return {
+        keyId: import.meta.env.VITE_RAZORPAY_KEY_ID || '',
+        keySecret: import.meta.env.VITE_RAZORPAY_KEY_SECRET || ''
+      };
     }
   }
 
-  private getAuthHeader(): string {
-    const credentials = btoa(`${this.keyId}:${this.keySecret}`);
+  private async getAuthHeader(): Promise<string> {
+    const keys = await this.getKeys();
+    
+    if (!keys.keyId || !keys.keySecret) {
+      throw new Error('Razorpay API keys not configured. Please add them in Settings.');
+    }
+    
+    console.log(`Using Razorpay Key ID: ${keys.keyId.substring(0, 10)}...`);
+    const credentials = btoa(`${keys.keyId}:${keys.keySecret}`);
     return `Basic ${credentials}`;
   }
 
@@ -89,7 +108,7 @@ class RazorpayService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': this.getAuthHeader(),
+        'Authorization': await this.getAuthHeader(),
       },
       body: JSON.stringify(data),
     });
@@ -113,7 +132,7 @@ class RazorpayService {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': this.getAuthHeader(),
+        'Authorization': await this.getAuthHeader(),
       },
       body: JSON.stringify(data),
     });
@@ -130,7 +149,7 @@ class RazorpayService {
     const response = await fetch(`${this.baseUrl}/payment_links/${paymentLinkId}/notify_by/${medium}`, {
       method: 'POST',
       headers: {
-        'Authorization': this.getAuthHeader(),
+        'Authorization': await this.getAuthHeader(),
       },
     });
 
@@ -145,7 +164,7 @@ class RazorpayService {
   async getPaymentLink(paymentLinkId: string): Promise<PaymentLinkResponse> {
     const response = await fetch(`${this.baseUrl}/payment_links/${paymentLinkId}`, {
       headers: {
-        'Authorization': this.getAuthHeader(),
+        'Authorization': await this.getAuthHeader(),
       },
     });
 
@@ -161,7 +180,7 @@ class RazorpayService {
   async getAllPaymentLinks(): Promise<{ items: PaymentLinkResponse[] }> {
     const response = await fetch(`${this.baseUrl}/payment_links`, {
       headers: {
-        'Authorization': this.getAuthHeader(),
+        'Authorization': await this.getAuthHeader(),
       },
     });
 
@@ -192,7 +211,7 @@ class RazorpayService {
     const response = await fetch(`${this.baseUrl}/payment_links/${paymentLinkId}/cancel`, {
       method: 'POST',
       headers: {
-        'Authorization': this.getAuthHeader(),
+        'Authorization': await this.getAuthHeader(),
       },
     });
 
@@ -288,4 +307,4 @@ class RazorpayService {
   }
 }
 
-export const razorpayService = new RazorpayService(); 
+export const razorpayService = new RazorpayService();
