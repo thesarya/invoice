@@ -79,6 +79,12 @@ class RazorpayService {
   }
 
   async createPaymentLink(data: CreatePaymentLinkRequest): Promise<PaymentLinkResponse> {
+    // Debug logging
+    console.log('Creating payment link with data:', data);
+    console.log('Using base URL:', this.baseUrl);
+    console.log('API Key configured:', !!this.keyId);
+    console.log('API Secret configured:', !!this.keySecret);
+
     const response = await fetch(`${this.baseUrl}/payment_links`, {
       method: 'POST',
       headers: {
@@ -88,12 +94,18 @@ class RazorpayService {
       body: JSON.stringify(data),
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error?.description || 'Failed to create payment link');
+      console.error('Payment link creation failed:', errorData);
+      throw new Error(errorData.error?.description || errorData.message || `Failed to create payment link (${response.status})`);
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('Payment link created successfully:', result);
+    return result;
   }
 
   async updatePaymentLink(paymentLinkId: string, data: Partial<CreatePaymentLinkRequest>): Promise<PaymentLinkResponse> {
@@ -208,6 +220,18 @@ class RazorpayService {
     email: string;
     amount: number; // Add amount parameter
   }): Promise<PaymentLinkResponse> {
+    // Validate required fields
+    if (!this.keyId || !this.keySecret) {
+      throw new Error('Razorpay API credentials not configured. Please check VITE_RAZORPAY_KEY_ID and VITE_RAZORPAY_KEY_SECRET environment variables.');
+    }
+
+    if (!customerData.name || !customerData.phone) {
+      throw new Error('Customer name and phone are required for payment link creation.');
+    }
+
+    if (!customerData.amount || customerData.amount <= 0) {
+      throw new Error('Valid amount is required for payment link creation.');
+    }
     const expireBy = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // 7 days from now
 
     // Clean phone number (remove +91 or 91 prefix)
