@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Filter, Phone, Mail, CheckCircle, FileText as DraftIcon, Clock, Layers, Copy, MessageCircle } from "lucide-react";
 import PaymentLinkDialog from './PaymentLinkDialog';
-import BulkPaymentLinkDialog from './BulkPaymentLinkDialog';
+import BulkPaymentLinkWithWhatsAppDialog from './BulkPaymentLinkWithWhatsAppDialog';
 import BulkReportDialog from './BulkReportDialog';
 import WhatsAppDialog from './WhatsAppDialog';
 import ChildReportDialog from './ChildReportDialog';
@@ -68,6 +68,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   };
 
   const allSelected = filteredInvoices.length > 0 && filteredInvoices.every(inv => selectedInvoiceIds.includes(inv.id));
+  console.log("allSelected",filteredInvoices)
   const toggleSelectAll = () => {
     if (allSelected) setSelectedInvoiceIds([]);
     else setSelectedInvoiceIds(filteredInvoices.map(inv => inv.id));
@@ -205,14 +206,26 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                 );
               })}
             </div>
-            <BulkPaymentLinkDialog 
+            
+            
+            <BulkPaymentLinkWithWhatsAppDialog
               selectedInvoices={filteredInvoices.filter(inv => selectedInvoiceIds.includes(inv.id))}
-              onPaymentLinksGenerated={(links) => {
-                setPaymentLinks(prev => ({
-                  ...prev,
-                  ...links
-                }));
-              }}
+              trigger={
+                <button
+                  className={`
+                    relative px-4 py-2 rounded-lg font-medium transition-all duration-200 
+                    flex items-center gap-2 shadow-sm hover:shadow-md transform hover:scale-105
+                    ${selectedInvoiceIds.length === 0
+                      ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
+                    }
+                  `}
+                  disabled={selectedInvoiceIds.length === 0}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  send whatspp fees reminder ({selectedInvoiceIds.length})
+                </button>
+              }
             />
             <BulkReportDialog 
               selectedInvoices={filteredInvoices.filter(inv => selectedInvoiceIds.includes(inv.id))}

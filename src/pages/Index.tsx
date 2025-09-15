@@ -10,7 +10,7 @@ import { Download, Trophy } from "lucide-react";
 import InvoiceStatsCards from '../components/InvoiceStatsCards';
 import InvoiceCharts from '../components/InvoiceCharts';
 import InvoiceTable from '../components/InvoiceTable';
-import ActiveParentsTable from '../components/ActiveParentsTable';
+import DeactiveChildrenTable from '../components/DeactiveChildrenTable';
 import Navigation from "@/components/Navigation";
 import ChildSelectorDialog from '@/components/ChildSelectorDialog';
 
@@ -587,10 +587,11 @@ const Index = () => {
               }
             />
             
+            
             {/* Export Button */}
             <Button onClick={exportData} variant="outline" className="flex items-center gap-2">
               <Download className="h-4 w-4" />
-              Export Data
+              Export Invoice Data
             </Button>
             
             <Checkbox
@@ -669,15 +670,15 @@ const Index = () => {
 
 
 
-        {/* Tabs for Invoices, Active Parents, and Charts */}
-        <Tabs defaultValue="invoices" className="w-full">
+        {/* Tabs for Active Students, Deactive Children, and Charts */}
+        <Tabs defaultValue="active-students" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="invoices">Invoices</TabsTrigger>
-            <TabsTrigger value="parents">Active Parents</TabsTrigger>
+            <TabsTrigger value="active-students">Active Students</TabsTrigger>
+            <TabsTrigger value="deactive-children">Deactive Children</TabsTrigger>
             <TabsTrigger value="charts">Analytics & Charts</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="invoices" className="mt-6">
+          <TabsContent value="active-students" className="mt-6">
             <InvoiceTable
               filteredInvoices={filteredInvoices}
               searchTerm={searchTerm}
@@ -693,8 +694,8 @@ const Index = () => {
             />
           </TabsContent>
           
-          <TabsContent value="parents" className="mt-6">
-            <ActiveParentsTable
+          <TabsContent value="deactive-children" className="mt-6">
+            <DeactiveChildrenTable
               centre={centre}
               showConsolidated={showConsolidated}
             />
