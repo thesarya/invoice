@@ -56,12 +56,47 @@ const ImprovedAnalytics: React.FC<ImprovedAnalyticsProps> = ({
 
   // Mock data for charts - would be calculated from historical data
   const studentTrends = [
-    { month: 'Jan', joined: 15, left: 3, net: 12 },
-    { month: 'Feb', joined: 20, left: 5, net: 15 },
-    { month: 'Mar', joined: 18, left: 2, net: 16 },
-    { month: 'Apr', joined: 25, left: 4, net: 21 },
-    { month: 'May', joined: 22, left: 6, net: 16 },
-    { month: 'Jun', joined: 30, left: 3, net: 27 }
+    { month: 'Jan', joined: 15, left: 3, net: 12, retention: 95.2 },
+    { month: 'Feb', joined: 20, left: 5, net: 15, retention: 93.8 },
+    { month: 'Mar', joined: 18, left: 2, net: 16, retention: 97.1 },
+    { month: 'Apr', joined: 25, left: 4, net: 21, retention: 94.5 },
+    { month: 'May', joined: 22, left: 6, net: 16, retention: 91.2 },
+    { month: 'Jun', joined: 30, left: 3, net: 27, retention: 96.8 }
+  ];
+
+  // Quarterly analysis data
+  const quarterlyAnalysis = [
+    { quarter: 'Q1 2023', revenue: 285000, students: 180, growth: 8.5, prevYear: 263000 },
+    { quarter: 'Q2 2023', revenue: 312000, students: 195, growth: 12.3, prevYear: 278000 },
+    { quarter: 'Q3 2023', revenue: 298000, students: 188, growth: 6.8, prevYear: 279000 },
+    { quarter: 'Q4 2023', revenue: 345000, students: 210, growth: 15.2, prevYear: 299000 },
+    { quarter: 'Q1 2024', revenue: 368000, students: 225, growth: 29.1, prevYear: 285000 },
+    { quarter: 'Q2 2024', revenue: 395000, students: 240, growth: 26.6, prevYear: 312000 }
+  ];
+
+  // Year-over-year comparison
+  const yearOverYearData = [
+    { period: 'Q1', current: 368000, previous: 285000, growth: 29.1 },
+    { period: 'Q2', current: 395000, previous: 312000, growth: 26.6 },
+    { period: 'Q3', current: 420000, previous: 298000, growth: 40.9 },
+    { period: 'Q4', current: 445000, previous: 345000, growth: 29.0 }
+  ];
+
+  // Growth projection for next year
+  const growthProjection = [
+    { quarter: 'Q1 2025', projected: 425000, conservative: 395000, optimistic: 455000 },
+    { quarter: 'Q2 2025', projected: 465000, conservative: 430000, optimistic: 500000 },
+    { quarter: 'Q3 2025', projected: 485000, conservative: 445000, optimistic: 525000 },
+    { quarter: 'Q4 2025', projected: 520000, conservative: 475000, optimistic: 565000 }
+  ];
+
+  // Student leaving analysis
+  const leavingAnalysis = [
+    { reason: 'Financial Issues', count: 12, percentage: 35.3 },
+    { reason: 'Relocation', count: 8, percentage: 23.5 },
+    { reason: 'Academic Performance', count: 6, percentage: 17.6 },
+    { reason: 'Schedule Conflicts', count: 5, percentage: 14.7 },
+    { reason: 'Other', count: 3, percentage: 8.8 }
   ];
 
   const revenueProgress = [
@@ -193,21 +228,423 @@ const ImprovedAnalytics: React.FC<ImprovedAnalyticsProps> = ({
       </div>
 
       {/* Analytics Tabs */}
-      <Tabs defaultValue="student-trends" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-gray-100">
-          <TabsTrigger value="student-trends" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-            Student Trends
+      <Tabs defaultValue="quarterly-analysis" className="w-full">
+        <TabsList className="grid w-full grid-cols-7 bg-gray-100">
+          <TabsTrigger value="quarterly-analysis" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs">
+            Quarterly
           </TabsTrigger>
-          <TabsTrigger value="revenue-progress" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-            Revenue Progress
+          <TabsTrigger value="yoy-comparison" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs">
+            YoY Growth
           </TabsTrigger>
-          <TabsTrigger value="centre-comparison" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-            Centre Comparison
+          <TabsTrigger value="growth-projection" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs">
+            Projections
           </TabsTrigger>
-          <TabsTrigger value="student-distribution" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-            Distribution
+          <TabsTrigger value="leaving-analysis" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs">
+            Retention
+          </TabsTrigger>
+          <TabsTrigger value="student-trends" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs">
+            Trends
+          </TabsTrigger>
+          <TabsTrigger value="revenue-progress" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs">
+            Progress
+          </TabsTrigger>
+          <TabsTrigger value="centre-comparison" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs">
+            Centres
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="quarterly-analysis" className="mt-6">
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                Quarterly Revenue Analysis
+              </CardTitle>
+              <CardDescription>
+                Comprehensive quarterly performance with growth metrics and comparisons
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <AreaChart data={quarterlyAnalysis} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="quarter" stroke="#666" />
+                  <YAxis stroke="#666" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke={colors.primary} 
+                    fill={colors.primary}
+                    fillOpacity={0.3}
+                    strokeWidth={3}
+                    name="Revenue"
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="prevYear" 
+                    stroke={colors.secondary} 
+                    fill={colors.secondary}
+                    fillOpacity={0.2}
+                    strokeWidth={2}
+                    name="Previous Year"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+              
+              {/* Quarterly Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-blue-800">Current Quarter Revenue</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-900">
+                    ₹{quarterlyAnalysis[quarterlyAnalysis.length - 1]?.revenue.toLocaleString()}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {getGrowthIcon(quarterlyAnalysis[quarterlyAnalysis.length - 1]?.growth || 0)}
+                    <span className={`text-xs font-medium ${getGrowthColor(quarterlyAnalysis[quarterlyAnalysis.length - 1]?.growth || 0)}`}>
+                      {quarterlyAnalysis[quarterlyAnalysis.length - 1]?.growth > 0 ? '+' : ''}{quarterlyAnalysis[quarterlyAnalysis.length - 1]?.growth.toFixed(1)}% YoY
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="h-4 w-4 text-green-600" />
+                    <span className="font-medium text-green-800">Students This Quarter</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-900">
+                    {quarterlyAnalysis[quarterlyAnalysis.length - 1]?.students}
+                  </p>
+                  <p className="text-xs text-green-600">Active enrollment</p>
+                </div>
+                
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-4 w-4 text-orange-600" />
+                    <span className="font-medium text-orange-800">Avg Revenue/Student</span>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-900">
+                    ₹{Math.round((quarterlyAnalysis[quarterlyAnalysis.length - 1]?.revenue || 0) / (quarterlyAnalysis[quarterlyAnalysis.length - 1]?.students || 1)).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-orange-600">per quarter</p>
+                </div>
+              </div>
+              
+              {/* Detailed Quarterly Breakdown */}
+              <div className="mt-6">
+                <h4 className="font-medium text-gray-800 mb-4">Quarterly Performance Breakdown</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {quarterlyAnalysis.slice(-6).map((quarter) => (
+                    <div key={quarter.quarter} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-800">{quarter.quarter}</span>
+                        <div className="flex items-center gap-1">
+                          {getGrowthIcon(quarter.growth)}
+                          <span className={`text-sm font-medium ${getGrowthColor(quarter.growth)}`}>
+                            {quarter.growth > 0 ? '+' : ''}{quarter.growth.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Revenue:</span>
+                          <span className="font-medium">₹{quarter.revenue.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Students:</span>
+                          <span className="font-medium">{quarter.students}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Prev Year:</span>
+                          <span className="font-medium">₹{quarter.prevYear.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="yoy-comparison" className="mt-6">
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                Year-over-Year Growth Comparison
+              </CardTitle>
+              <CardDescription>
+                Compare current year performance with previous year across quarters
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={yearOverYearData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="period" stroke="#666" />
+                  <YAxis stroke="#666" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="previous" fill={colors.accent} name="Previous Year" opacity={0.7} />
+                  <Bar dataKey="current" fill={colors.success} name="Current Year" />
+                </BarChart>
+              </ResponsiveContainer>
+              
+              {/* YoY Growth Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                {yearOverYearData.map((data) => (
+                  <div key={data.period} className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-green-800">{data.period}</span>
+                      <div className="flex items-center gap-1">
+                        {getGrowthIcon(data.growth)}
+                        <span className={`text-sm font-medium ${getGrowthColor(data.growth)}`}>
+                          {data.growth > 0 ? '+' : ''}{data.growth.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">Current:</span>
+                        <span className="font-medium">₹{data.current.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">Previous:</span>
+                        <span className="font-medium">₹{data.previous.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">Difference:</span>
+                        <span className="font-medium text-green-700">₹{(data.current - data.previous).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="growth-projection" className="mt-6">
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-purple-600" />
+                Next Year Growth Projections
+              </CardTitle>
+              <CardDescription>
+                Revenue forecasting with conservative, projected, and optimistic scenarios
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart data={growthProjection} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="quarter" stroke="#666" />
+                  <YAxis stroke="#666" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="conservative" 
+                    stroke={colors.warning} 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    name="Conservative"
+                    dot={{ fill: colors.warning, strokeWidth: 2, r: 3 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="projected" 
+                    stroke={colors.primary} 
+                    strokeWidth={3}
+                    name="Projected"
+                    dot={{ fill: colors.primary, strokeWidth: 2, r: 4 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="optimistic" 
+                    stroke={colors.success} 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    name="Optimistic"
+                    dot={{ fill: colors.success, strokeWidth: 2, r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              
+              {/* Projection Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingDown className="h-4 w-4 text-yellow-600" />
+                    <span className="font-medium text-yellow-800">Conservative Scenario</span>
+                  </div>
+                  <p className="text-2xl font-bold text-yellow-900">
+                    ₹{growthProjection.reduce((sum, q) => sum + q.conservative, 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-yellow-600">Total projected (2025)</p>
+                </div>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-blue-800">Projected Scenario</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-900">
+                    ₹{growthProjection.reduce((sum, q) => sum + q.projected, 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-blue-600">Total projected (2025)</p>
+                </div>
+                
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <span className="font-medium text-green-800">Optimistic Scenario</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-900">
+                    ₹{growthProjection.reduce((sum, q) => sum + q.optimistic, 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-green-600">Total projected (2025)</p>
+                </div>
+              </div>
+              
+              {/* Quarterly Projections */}
+              <div className="mt-6">
+                <h4 className="font-medium text-gray-800 mb-4">Quarterly Projection Breakdown</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {growthProjection.map((quarter) => (
+                    <div key={quarter.quarter} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <span className="font-medium text-gray-800 block mb-3">{quarter.quarter}</span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-yellow-600">Conservative:</span>
+                          <span className="font-medium">₹{quarter.conservative.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-blue-600">Projected:</span>
+                          <span className="font-medium">₹{quarter.projected.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-green-600">Optimistic:</span>
+                          <span className="font-medium">₹{quarter.optimistic.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="leaving-analysis" className="mt-6">
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserMinus className="h-5 w-5 text-red-600" />
+                Student Leaving & Retention Analysis
+              </CardTitle>
+              <CardDescription>
+                Detailed analysis of student retention patterns and leaving reasons
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-4">Reasons for Leaving</h4>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={leavingAnalysis}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={120}
+                        paddingAngle={5}
+                        dataKey="count"
+                      >
+                        {leavingAnalysis.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={[
+                            colors.danger, colors.warning, colors.accent, colors.secondary, colors.primary
+                          ][index % 5]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-4">Retention Rate Trends</h4>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={studentTrends} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="month" stroke="#666" />
+                      <YAxis domain={[90, 100]} stroke="#666" />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="retention" 
+                        stroke={colors.success} 
+                        strokeWidth={3}
+                        name="Retention Rate (%)"
+                        dot={{ fill: colors.success, strokeWidth: 2, r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              
+              {/* Leaving Analysis Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
+                {leavingAnalysis.map((reason, index) => (
+                  <div key={reason.reason} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: [
+                          colors.danger, colors.warning, colors.accent, colors.secondary, colors.primary
+                        ][index % 5] }}
+                      ></div>
+                      <span className="font-medium text-gray-800 text-sm">{reason.reason}</span>
+                    </div>
+                    <p className="text-xl font-bold text-gray-900">{reason.count}</p>
+                    <p className="text-xs text-gray-600">{reason.percentage}% of total</p>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Retention Insights */}
+              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h5 className="font-medium text-blue-800 mb-2">Retention Insights</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-blue-600 mb-1">Average Retention Rate</p>
+                    <p className="text-2xl font-bold text-blue-900">
+                      {(studentTrends.reduce((sum, trend) => sum + trend.retention, 0) / studentTrends.length).toFixed(1)}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-blue-600 mb-1">Students at Risk</p>
+                    <p className="text-2xl font-bold text-blue-900">
+                      {Math.round(totalActiveStudents * 0.08)}
+                    </p>
+                    <p className="text-xs text-blue-600">Need attention</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-blue-600 mb-1">Potential Revenue Loss</p>
+                    <p className="text-2xl font-bold text-blue-900">
+                      ₹{Math.round(totalActiveStudents * 0.08 * averageRevenuePerStudent).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-blue-600">Monthly risk</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="student-trends" className="mt-6">
           <Card className="border-0 shadow-lg">
@@ -420,76 +857,7 @@ const ImprovedAnalytics: React.FC<ImprovedAnalyticsProps> = ({
           </Card>
         </TabsContent>
 
-        <TabsContent value="student-distribution" className="mt-6">
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-indigo-600" />
-                Student Distribution
-              </CardTitle>
-              <CardDescription>
-                Overview of active vs inactive student distribution
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-gray-800 mb-4 text-center">Student Status Distribution</h4>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={120}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                <div className="flex flex-col justify-center space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                      <span className="font-medium text-green-800">Active Students</span>
-                    </div>
-                    <p className="text-3xl font-bold text-green-900 mb-1">{totalActiveStudents}</p>
-                    <p className="text-sm text-green-600">
-                      {((totalActiveStudents / (totalActiveStudents + totalInactiveStudents)) * 100).toFixed(1)}% of total
-                    </p>
-                  </div>
-                  
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                      <span className="font-medium text-red-800">Inactive Students</span>
-                    </div>
-                    <p className="text-3xl font-bold text-red-900 mb-1">{totalInactiveStudents}</p>
-                    <p className="text-sm text-red-600">
-                      {((totalInactiveStudents / (totalActiveStudents + totalInactiveStudents)) * 100).toFixed(1)}% of total
-                    </p>
-                  </div>
-                  
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h5 className="font-medium text-blue-800 mb-2">Reactivation Opportunity</h5>
-                    <p className="text-sm text-blue-600">
-                      Focus on reactivating {totalInactiveStudents} inactive students to boost revenue by up to 
-                      ₹{(totalInactiveStudents * averageRevenuePerStudent).toLocaleString()} per month.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+
       </Tabs>
     </div>
   );
